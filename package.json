@@ -12,7 +12,8 @@
     "fund": "bun run main.ts -f",
     "dividend": "bun run main.ts --dividend",
     "test": "bun test",
-    "test:sdk": "bun run test/test-stock-sdk.ts"
+    "test:sdk": "bun run test/test-stock-sdk.ts",
+    "check-report": "bun run .agents/business/report-review/scripts/check-report.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
