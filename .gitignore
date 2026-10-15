@@ -8,6 +8,7 @@ Thumbs.db
 # IDE 配置
 .idea/
 .vscode/
+.trae-html-share-packages/
 *.swp
 *.swo
 *~
