@@ -58,7 +58,7 @@ function execCLI(command: string): any {
     const result = execSync(`npx stock-sdk ${command}`, { encoding: 'utf-8' })
     return JSON.parse(result)
   } catch (error) {
-    throw new Error(`CLI 命令执行失败: ${command}`)
+    throw new Error(`CLI 命令执行失败: ${command}`, { cause: error })
   }
 }
 
@@ -206,9 +206,9 @@ async function main() {
   console.log('🔍 8. 搜索功能测试')
 
   await test('搜索股票 - 招商银行', async () => {
-    const results = await sdk.search('招商银行')
-    printJson(results)
-    return results
+    const found = await sdk.search('招商银行')
+    printJson(found)
+    return found
   })
 
   // ==================== 测试结果汇总 ====================

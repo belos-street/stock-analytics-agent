@@ -19,6 +19,9 @@
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
 
+    // Type definitions: bun types (covers bun:test, Bun globals) + node builtins
+    "types": ["bun", "node"],
+
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,

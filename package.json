@@ -1,11 +1,11 @@
 {
   "name": "stock-analytics-skill",
   "version": "2.0.0",
-  "module": "main.ts",
-  "type": "module",
   "bin": {
     "stock-analytics": "./main.ts"
   },
+  "type": "module",
+  "module": "main.ts",
   "scripts": {
     "start": "bun run main.ts",
     "quote": "bun run main.ts -s",
@@ -13,17 +13,23 @@
     "dividend": "bun run main.ts --dividend",
     "test": "bun test",
     "test:sdk": "bun run test/test-stock-sdk.ts",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "typecheck": "tsc --noEmit",
     "check-report": "bun run .agents/business/report-review/scripts/check-report.ts"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
   },
   "dependencies": {
     "chalk": "^5.6.2",
     "commander": "^14.0.3",
     "stock-sdk": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.3",
+    "@types/node": "^26.6.5",
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.88.0",
+    "typescript": "^7.0.2"
   }
 }

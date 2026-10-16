@@ -4,7 +4,15 @@
  */
 
 // SDK 封装
-export { getSDK, getQuotes, getFundQuotes, getHKQuotes, getUSQuotes, getKline, searchStock } from './sdk'
+export {
+  getSDK,
+  getQuotes,
+  getFundQuotes,
+  getHKQuotes,
+  getUSQuotes,
+  getKline,
+  searchStock
+} from './sdk'
 
 // 股息率计算
 export { getDividendYield, getDividendYields } from './dividend'
@@ -20,4 +28,9 @@ export {
   formatAndOutputDividends,
   outputData
 } from './format'
-export type { FormattedStock, FormattedFund, FormattedDividend, FormattedData } from './format'
+export type {
+  FormattedStock,
+  FormattedFund,
+  FormattedDividend,
+  FormattedData
+} from './format'

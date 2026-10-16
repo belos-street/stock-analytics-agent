@@ -41,13 +41,23 @@ function execQuoteCLI(codes: string[], extraArgs: string[] = []): any[] {
   try {
     const result = execFileSync(
       cmd,
-      [...prefixArgs, 'quote', ...validCodes, ...extraArgs, '--format', 'json', '-q'],
+      [
+        ...prefixArgs,
+        'quote',
+        ...validCodes,
+        ...extraArgs,
+        '--format',
+        'json',
+        '-q'
+      ],
       { encoding: 'utf-8' }
     )
     return JSON.parse(result)
   } catch (error: any) {
     const detail = error.stderr ? error.stderr.toString().trim() : error.message
-    throw new Error(`行情查询失败 (${validCodes.join(',')}): ${detail}`)
+    throw new Error(`行情查询失败 (${validCodes.join(',')}): ${detail}`, {
+      cause: error
+    })
   }
 }
 
@@ -73,12 +83,10 @@ export async function getUSQuotes(codes: string[]) {
 
 // K线数据（使用SDK）
 export async function getKline(symbol: string, period: string = 'daily') {
-  const sdk = getSDK()
-  return sdk.kline.cn(symbol, { period: period as any })
+  return getSDK().kline.cn(symbol, { period: period as any })
 }
 
 // 搜索股票
 export async function searchStock(keyword: string) {
-  const sdk = getSDK()
-  return sdk.search(keyword)
+  return getSDK().search(keyword)
 }

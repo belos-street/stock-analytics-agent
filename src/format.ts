@@ -105,18 +105,19 @@ export function outputData(
   }
 
   switch (format) {
-    case 'json':
+    case 'json': {
       const jsonOutput = pretty
         ? JSON.stringify(data, null, 2)
         : JSON.stringify(data)
       console.log(jsonOutput)
       break
+    }
 
     case 'table':
       console.table(data)
       break
 
-    case 'csv':
+    case 'csv': {
       if (data.length > 0) {
         const headers = Object.keys(data[0]).join(',')
         const rows = data.map((item) =>
@@ -129,6 +130,7 @@ export function outputData(
         console.log([headers, ...rows].join('\n'))
       }
       break
+    }
   }
 }
 

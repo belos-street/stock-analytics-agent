@@ -1,5 +1,4 @@
-import { getSDK } from './sdk'
-import { getQuotes } from './sdk'
+import { getQuotes, getSDK } from './sdk'
 
 /**
  * 股息率计算结果
@@ -81,7 +80,10 @@ async function getDividendYieldFromEastMoney(
 
     // 找到最新的已实施分红
     const latestDividend = dividends.find(
-      (d: any) => d.ASSIGN_PROGRESS === '实施分配' && d.PRETAX_BONUS_RMB != null
+      (d: any) =>
+        d.ASSIGN_PROGRESS === '实施分配' &&
+        d.PRETAX_BONUS_RMB !== null &&
+        d.PRETAX_BONUS_RMB !== undefined
     )
 
     if (!latestDividend) {
@@ -151,7 +153,10 @@ async function getDividendYieldFromSDK(
 
     // 找到最新的已实施分配的分红
     const latestDividend = dividends.find(
-      (d: any) => d.assignProgress === '实施分配' && d.dividendPretax != null
+      (d: any) =>
+        d.assignProgress === '实施分配' &&
+        d.dividendPretax !== null &&
+        d.dividendPretax !== undefined
     )
 
     if (!latestDividend) {

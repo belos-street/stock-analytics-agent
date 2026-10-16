@@ -3,7 +3,6 @@ import {
   getQuotes,
   getFundQuotes,
   getHKQuotes,
-  getUSQuotes,
   getKline,
   searchStock
 } from '../src/sdk'

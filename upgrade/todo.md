@@ -5,21 +5,24 @@
 
 ## 📋 需求清单
 
-| # | 需求 | 判定 | 优先级 |
-| --- | --- | --- | --- |
-| 1 | `.agents/business` 新增 skill，引入 skill-kit 优化代码质量 | ✅ 合理 | P1 |
-| 2 | 引入 LangChain.js Agent，双模式（harness + 独立 CLI），用户配置模型即跑 | ✅ 合理（Q1/Q2 已拍板） | P0 |
-| 3 | 工程化工具链换为 oxclint + oxcfmt | ✅ 合理 | P1 |
-| 4 | 重写 README | ✅ 合理 | P2 |
-| 5 | 全面 review `.agents/skills`（25 个） | ✅ 合理 | P2 |
+| #   | 需求                                                                    | 判定                    | 优先级 |
+| --- | ----------------------------------------------------------------------- | ----------------------- | ------ |
+| 1   | `.agents/business` 新增 skill，引入 skill-kit 优化代码质量              | ✅ 合理                 | P0     |
+| 3   | 工程化工具链换为 oxclint + oxcfmt                                       | ✅ 合理                 | P0     |
+| 2   | 引入 LangChain.js Agent，双模式（harness + 独立 CLI），用户配置模型即跑 | ✅ 合理（Q1/Q2 已拍板） | P1     |
+| 4   | 重写 README                                                             | ✅ 合理                 | P2     |
+| 5   | 全面 review `.agents/skills`（25 个）                                   | ✅ 合理                 | P2     |
+
+> 💡 优先级调整（2026-10-16）：规范与工具链先行，agent 编码时直接遵循，避免返工。P0 产出（编码规范、business skill、lint/format）是 P1 agent 开发的前置输入。
 
 ```mermaid
 flowchart LR
-    A[P0: LangChain Agent] --> B[P1: skill-kit 引入<br/>+ business skill]
-    A --> C[P1: oxclint/oxcfmt]
+    B[P0: skill-kit 引入<br/>+ business skill] --> A[P1: LangChain Agent]
+    C[P0: oxclint/oxcfmt] --> A
     B --> D[P2: 全量 review skills]
     C --> D
-    D --> E[P2: 重写 README]
+    A --> D
+    D --> E[P2: 重写 README + 改名]
 ```
 
 ## 🔓 开放问题
@@ -34,7 +37,28 @@ flowchart LR
 
 ## ✅ TODO
 
-### P0 · LangChain.js Agent（需求 #2）双模式
+### P0 · skill-kit 引入 + business skill（需求 #1）
+
+> ✅ 引入清单已拍板（2026-10-16）：`belos-street` + `bun` + `grill-me` 从 skill-kit 引入；`langchain` **不引入** skill-kit 的 Python 版，改为按需 WebFetch 官方文档 [llms.txt](https://docs.langchain.com/llms.txt) 核查 LangChain.js API；排除 superpowers（过重）/ rag / vibe-flow / 前端类
+
+- [x] 从 skill-kit 复制 `belos-street`、`bun`、`grill-me` 到项目（放 `.agents/dev/`，与投资 skill 分开）✅ 2026-10-16，已统一 SKILL.md 命名
+- [x] `agents.md` 新增「技能目录路由表」，三目录（skills/business/dev）按场景快速检索 ✅ 2026-10-16
+- [x] 轻量采纳 ai-collab 体系：`.agents/rules/`（memory + project_rules）+ `.agents/memory/decisions.md`（已回填 D1-D6 决策），不引入 workflows/doc 分层/L6 闸门 ✅ 2026-10-16
+- [x] 按 `belos-street` 规范审查 `src/`、`main.ts` 现有代码质量并优化 ✅ 2026-10-16，oxlint 全清（修复 eqeqeq×2、重复 import、switch 裸声明、no-shadow×3、catch 未用参数、丢失 cause×2），删除空目录 `src/formatter/`，lint/format/test/typecheck 全绿
+- [ ] `.agents/business` 新增 skill（内容待定义：候选方向如 分析报告生成、数据校验、口径标注 工具化）
+- [ ] 与现有 `html-report`、`report-review` 两个 business skill 对齐模板与脚手架结构
+
+### P0 · 工程化工具链（需求 #3）
+
+- [x] 引入 oxlint（`.oxlintrc.json`，抄 belos-street 配置）✅ 2026-10-16
+- [x] 引入 oxcfmt（`.oxfmtrc.jsonc`，**已排除 `**/*.md`** 避免研究文档被格式器 churn）✅ 2026-10-16
+- [x] package.json 增加 `lint`/`lint:fix`/`format`/`format:check`/`typecheck` 脚本，typescript 移入 devDependencies ✅ 2026-10-16
+- [x] 全量 lint + format，修复存量问题 ✅ 2026-10-16，还原了被误格式化的 README/position.example/strategy/watchlist
+- [x] 与 Bun 工作流串联验证：`bun test` 7 pass、`typecheck` 通过（补 `@types/node` + tsconfig `types: ["bun","node"]`）✅ 2026-10-16
+
+### P1 · LangChain.js Agent（需求 #2）双模式
+
+> ⬆️ 前置依赖 P0：编码遵循 `belos-street` 规范，代码通过 oxclint/oxcfmt 校验
 
 #### 模式 1 · harness 用法（保持现状，不许破坏）
 
@@ -60,21 +84,6 @@ flowchart LR
 - [ ] 两种模式共享同一数据层（`src/` CLI 能力），避免逻辑分叉
 - [ ] README 说明两种使用方式的选择与切换
 
-### P1 · skill-kit 引入 + business skill（需求 #1）
-
-- [ ] 评估并从 skill-kit 引入相关 skill（候选：`belos-street` 编码规范、`bun` 最佳实践、`superpowers` 协作流程、`grill-me` 评审自查；排除 vue/react 等前端类）
-- [ ] 按引入的规范审查 `src/`、`main.ts` 现有代码质量并优化
-- [ ] `.agents/business` 新增 skill（内容待定义：候选方向如 分析报告生成、数据校验、口径标注 工具化）
-- [ ] 与现有 `html-report`、`report-review` 两个 business skill 对齐模板与脚手架结构
-
-### P1 · 工程化工具链（需求 #3）
-
-- [ ] 引入 oxclint（替换/新增 lint），生成并调优 `.oxlintrc.json`
-- [ ] 引入 oxcfmt（格式化），生成配置
-- [ ] package.json 增加 `lint` / `format` /`format:check` 脚本
-- [ ] 全量跑一次 lint + format，修复存量问题
-- [ ] 与 Bun 工作流（`bun test`）串联验证
-
 ### P2 · 全量 review `.agents/skills`（需求 #5）
 
 - [ ] 制定 review 清单（口径标注完整性、数据来源标注、空方论点、与 memory 教训对齐）
@@ -90,6 +99,14 @@ flowchart LR
 - [ ] 更新安装与快速开始（含模型配置说明）
 - [ ] 更新 skill 清单（25 个 skill + business skills）
 - [ ] 与 `agents.md`、`AGENTS.md` 目录引用保持一致
+
+### P2 · 项目改名 stock-analytics-agent（已拍板 2026-10-16）
+
+- [ ] GitHub 仓库改名 `belos-street/stock-analytics-skill` → `belos-street/stock-analytics-agent`（GitHub 自动重定向旧 URL）
+- [ ] 本地目录改名 `/Volumes/jiangzhi-ssd/code/personal/stock-analytics-skill` → `.../stock-analytics-agent`
+- [ ] `package.json`：`name` 改为 `stock-analytics-agent`，bin 名评估是否同步（`stock-analytics` 可保留）
+- [ ] 同步更新引用：`AGENTS.md`、README、`.git/config` remote、lockfile、文档内路径引用
+- [ ] 改名后回归验证：`bun run main.ts`、`bun test`、harness 读取（模式 1）均正常
 
 ### 收尾
 
