@@ -12,6 +12,8 @@ import { tool } from 'langchain'
 import { z } from 'zod'
 import { getQuotes, getFundQuotes, getKline, searchStock } from '../sdk'
 import { getDividendYields } from '../dividend'
+import { loadSkill, listSkills } from './skills'
+import type { KlinePeriod } from '../types'
 
 /** 工具返回统一为 JSON 字符串 */
 const toJson = (data: unknown): string => JSON.stringify(data, null, 2)
@@ -78,7 +80,7 @@ export const getDividendYield = tool(
 
 /** K线数据 */
 export const getKlineData = tool(
-  async ({ code, period }: { code: string; period?: string }) => {
+  async ({ code, period }: { code: string; period?: KlinePeriod }) => {
     return toJson(await getKline(code, period || 'daily'))
   },
   {
@@ -110,11 +112,36 @@ export const searchStockTool = tool(
   }
 )
 
+/** 加载投资分析 skill（方法论知识） */
+export const loadSkillTool = tool(
+  async ({ name }: { name: string }) => {
+    const skill = loadSkill(name)
+    if (!skill) {
+      const available = listSkills()
+        .map((s) => s.name)
+        .join(', ')
+      return `未找到 skill：${name}。可用 skill：${available}`
+    }
+    return `# ${skill.name}\n\n${skill.description}\n\n${skill.content}`
+  },
+  {
+    name: 'load_skill',
+    description:
+      '加载一个投资分析 skill 的完整方法论（如估值框架、个股深度分析、持仓分析流程）。在做相应分析前先加载对应 skill 获取分析框架与口径要求。skill 列表见系统提示。',
+    schema: z.object({
+      name: z
+        .string()
+        .describe('skill 名称，如 stock-deep-analysis、valuation-framework')
+    })
+  }
+)
+
 /** agent 工具集：模型可调用的全部工具 */
 export const agentTools = [
   getStockQuote,
   getFundQuote,
   getDividendYield,
   getKlineData,
-  searchStockTool
+  searchStockTool,
+  loadSkillTool
 ]

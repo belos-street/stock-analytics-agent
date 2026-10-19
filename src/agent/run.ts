@@ -6,20 +6,48 @@
 
 import { createInvestAgent } from './index'
 
+/** 消息片段：宽松形状，兼容 LangChain BaseMessage（content 类型复杂，用 unknown 收窄） */
+interface MessageLike {
+  role?: string
+  /** LangChain 消息判别字段：ai / human / tool 等 */
+  type?: string
+  content?: unknown
+}
+
+/** agent invoke 返回的最小结构（结构兼容 LangChain 返回，无需断言） */
+interface AgentResultLike {
+  messages?: MessageLike[]
+}
+
+/** 是否为 assistant / AI 回答消息（兼容 role 与 type 两种标识） */
+function isAssistantMessage(msg: MessageLike): boolean {
+  return msg?.role === 'assistant' || msg?.type === 'ai'
+}
+
+/** 从单个消息 content 中提取文本 */
+function contentToText(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (Array.isArray(content)) {
+    return content
+      .map((c: unknown) => {
+        if (typeof c === 'string') return c
+        const part = c as { text?: unknown }
+        return typeof part?.text === 'string' ? part.text : ''
+      })
+      .join('')
+  }
+  return ''
+}
+
 /** 从 agent 输出中提取最终文本回答 */
-function extractText(result: any): string {
+function extractText(result: AgentResultLike): string {
   const messages = result?.messages ?? []
-  // 最后一条 assistant 消息即最终回答
+  // 最后一条 assistant / AI 消息即最终回答
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i]
-    if (msg?.role === 'assistant') {
-      const content = msg.content
-      if (typeof content === 'string') return content
-      if (Array.isArray(content)) {
-        return content
-          .map((c: any) => (typeof c === 'string' ? c : (c?.text ?? '')))
-          .join('')
-      }
+    if (msg && isAssistantMessage(msg)) {
+      const text = contentToText(msg.content)
+      if (text) return text
     }
   }
   return JSON.stringify(result, null, 2)
@@ -58,8 +86,10 @@ export async function chatLoop(): Promise<void> {
       const answer = extractText(result)
       history.push({ role: 'assistant', content: answer })
       console.error(`\n助手 > ${answer}\n`)
-    } catch (error: any) {
-      console.error(`\n出错：${error.message}\n`)
+    } catch (error) {
+      console.error(
+        `\n出错：${error instanceof Error ? error.message : String(error)}\n`
+      )
     }
   }
   console.error('再见 👋')
