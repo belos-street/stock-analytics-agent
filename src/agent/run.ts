@@ -10,6 +10,7 @@
 
 import { createInvestAgent } from './index'
 import { describeToolCall, renderTrace, type ToolCallRecord } from './trace'
+import { renderMarkdown, createSpinner } from '../cli/render'
 
 /** 消息片段：宽松形状，兼容 LangChain BaseMessage（content 类型复杂，用 unknown 收窄） */
 interface MessageLike {
@@ -75,15 +76,19 @@ async function runWithProgress(
 
   const stream = await agent.streamEvents({ messages }, { version: 'v2' })
 
+  // loading 动画：思考/调工具期间持续旋转，文案随动作更新
+  const spinner = createSpinner('思考中…')
+  spinner.start()
+
   for await (const ev of stream) {
-    // 工具开始：实时进度（走 stderr，不污染主输出）
+    // 工具开始：spinner 文案实时更新（loading 动画 + 当前动作）
     if (ev.event === 'on_tool_start') {
       const call: ToolCallRecord = {
         name: ev.name ?? 'tool',
         input: ev.data?.input ?? {}
       }
       calls.push(call)
-      process.stderr.write(`  ⚙ ${describeToolCall(call)}…\n`)
+      spinner.text = describeToolCall(call)
       continue
     }
 
@@ -96,6 +101,7 @@ async function runWithProgress(
     }
   }
 
+  spinner.stop()
   return { answer, calls }
 }
 
@@ -106,7 +112,7 @@ export async function askOnce(question: string): Promise<string> {
     { role: 'user', content: question }
   ])
   const trace = renderTrace(calls)
-  return trace ? `${answer}\n\n${trace}` : answer
+  return trace ? `${renderMarkdown(answer)}\n${trace}` : renderMarkdown(answer)
 }
 
 /** 交互式多轮对话（REPL） */
@@ -131,8 +137,8 @@ export async function chatLoop(): Promise<void> {
       // eslint-disable-next-line no-await-in-loop
       const { answer, calls } = await runWithProgress(agent, history)
       history.push({ role: 'assistant', content: answer })
-      // 回答是主输出，走 stdout（stderr 会被终端渲染成红色）
-      console.log(`\n助手 > ${answer}\n`)
+      // 回答走 markdown 彩色渲染（stdout）；history 存纯文本避免重复转义
+      console.log(`\n${renderMarkdown(answer)}`)
       // 溯源清单
       const trace = renderTrace(calls)
       if (trace) console.log(`${trace}\n`)
