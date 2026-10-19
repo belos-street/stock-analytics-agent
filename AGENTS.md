@@ -13,6 +13,70 @@
 
 ---
 
+## 环境自检与 Bootstrap（首次使用先执行）
+
+> 🎯 项目 download 到本地后，由 AI agent **按顺序自检并补齐运行环境**，不必等用户手动安装。每步给出可直接执行的命令与失败兜底。
+
+### 自检 1 · Bun 运行时
+
+本项目用 [Bun](https://bun.sh) 跑 CLI，先检查是否已安装：
+
+```bash
+bun --version
+```
+
+- ✅ 输出版本号 → 跳到自检 2
+- ❌ `command not found: bun` → 按平台安装：
+
+```bash
+# macOS（推荐）
+brew install oven-sh/bun/bun
+
+# macOS / Linux 通用
+curl -fsSL https://bun.sh/install | bash
+```
+
+安装后重开终端或 `source ~/.zshrc`，再跑 `bun --version` 确认。
+**兜底**：仍失败则提示用户手动安装 <https://bun.sh/docs/installation>，勿自行猜测其他方案。
+
+### 自检 2 · 项目依赖
+
+无条件执行（幂等，顺带修复依赖漂移）：
+
+```bash
+bun install
+```
+
+- ✅ 无报错 → 跳到自检 3
+- ❌ 报错 → 确认在**项目根目录**执行；网络受限时提示用户配置镜像后重试
+
+### 自检 3 · 持仓配置文件
+
+```bash
+ls position.md
+```
+
+- ✅ 存在 → 自检完成
+- ❌ 不存在 → 复制模板并**提示用户填写**：
+
+```bash
+cp position.example.md position.md
+```
+
+> ⚠️ `position.md` 是个人持仓配置，agent 只负责生成骨架，具体持仓/偏好必须由用户本人填写后才可继续分析。
+
+### 自检完成 ✅
+
+三条都通过后即可正常使用 CLI 与 Skill。快速冒烟测试：
+
+```bash
+bun run main.ts -s sh600519 --pretty
+```
+
+能返回贵州茅台行情即环境就绪。
+
+---
+
 ## 配置文件
 
 ### position.md - 个人持仓配置

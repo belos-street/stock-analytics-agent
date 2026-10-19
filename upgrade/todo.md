@@ -8,8 +8,8 @@
 | #   | 需求                                                                    | 判定                    | 优先级 |
 | --- | ----------------------------------------------------------------------- | ----------------------- | ------ |
 | 1   | `.agents/business` 新增 skill，引入 skill-kit 优化代码质量              | ✅ 合理                 | P0     |
-| 3   | 工程化工具链换为 oxclint + oxcfmt                                       | ✅ 合理                 | P0     |
 | 2   | 引入 LangChain.js Agent，双模式（harness + 独立 CLI），用户配置模型即跑 | ✅ 合理（Q1/Q2 已拍板） | P1     |
+| 3   | 工程化工具链换为 oxclint + oxcfmt                                       | ✅ 合理                 | P0     |
 | 4   | 重写 README                                                             | ✅ 合理                 | P2     |
 | 5   | 全面 review `.agents/skills`（25 个）                                   | ✅ 合理                 | P2     |
 
@@ -45,8 +45,8 @@ flowchart LR
 - [x] `agents.md` 新增「技能目录路由表」，三目录（skills/business/dev）按场景快速检索 ✅ 2026-10-16
 - [x] 轻量采纳 ai-collab 体系：`.agents/rules/`（memory + project_rules）+ `.agents/memory/decisions.md`（已回填 D1-D6 决策），不引入 workflows/doc 分层/L6 闸门 ✅ 2026-10-16
 - [x] 按 `belos-street` 规范审查 `src/`、`main.ts` 现有代码质量并优化 ✅ 2026-10-16，oxlint 全清（修复 eqeqeq×2、重复 import、switch 裸声明、no-shadow×3、catch 未用参数、丢失 cause×2），删除空目录 `src/formatter/`，lint/format/test/typecheck 全绿
-- [ ] `.agents/business` 新增 skill（内容待定义：候选方向如 分析报告生成、数据校验、口径标注 工具化）
-- [ ] 与现有 `html-report`、`report-review` 两个 business skill 对齐模板与脚手架结构
+- [x] ~~`.agents/business` 新增 skill~~ **结案不做**（2026-10-19）：三个候选方向已被现有能力覆盖——报告生成=`html-report`、数据校验=`report-review` D1、口径=`report-review` D2 + `project_rules` 口径纪律。再建 skill 属过度工程
+- [x] ~~与 html-report、report-review 对齐模板~~ **结案不做**（2026-10-19）：不新增 skill 则对齐前提消失
 
 ### P0 · 工程化工具链（需求 #3）
 
@@ -62,13 +62,13 @@ flowchart LR
 
 #### 模式 1 · harness 用法（保持现状，不许破坏）
 
-- [ ] 盘点现有入口（`AGENTS.md`、`.agents/skills`、CLI）确保 agent 改造期间零破坏
-- [ ] `AGENTS.md` 新增「环境自检与 bootstrap」章节，引导 harness agent 自行准备运行时：
+- [x] 盘点现有入口（`AGENTS.md`、`.agents/skills`、CLI）确保 agent 改造期间零破坏 ✅ 2026-10-19，6 个入口全部完整
+- [x] `AGENTS.md` 新增「环境自检与 bootstrap」章节，引导 harness agent 自行准备运行时 ✅ 2026-10-19：
   - 自检 `bun --version`，缺失时按引导安装（macOS：`brew install oven-sh/bun/bun`；通用：`curl -fsSL https://bun.sh/install | bash`）
   - 自检 `bun install` 依赖已就绪（`node_modules` 缺失时自动安装）
   - 自检 `position.md` 存在，缺失时引导从 `position.example.md` 复制后由用户填写
   - 各自检步骤给出可直接执行的命令 + 失败时的兜底提示
-- [ ] 回归验证：harness 工具仍可读取项目并正常调用 skill + CLI
+- [x] 回归验证：harness 工具仍可读取项目并正常调用 skill + CLI ✅ 2026-10-19，test 7 pass / lint 0 error / CLI 冒烟通过
 
 #### 模式 2 · 独立 CLI 用法（新增 langchainjs）
 
@@ -105,6 +105,7 @@ flowchart LR
 - [ ] GitHub 仓库改名 `belos-street/stock-analytics-skill` → `belos-street/stock-analytics-agent`（GitHub 自动重定向旧 URL）
 - [ ] 本地目录改名 `/Volumes/jiangzhi-ssd/code/personal/stock-analytics-skill` → `.../stock-analytics-agent`
 - [ ] `package.json`：`name` 改为 `stock-analytics-agent`，bin 名评估是否同步（`stock-analytics` 可保留）
+- [ ] 版本号口径统一：`package.json` `2.0.0` → `3.0.0`，`main.ts` 注释 "V2.0" → "V3.0"（review #6，并入改名时同步）
 - [ ] 同步更新引用：`AGENTS.md`、README、`.git/config` remote、lockfile、文档内路径引用
 - [ ] 改名后回归验证：`bun run main.ts`、`bun test`、harness 读取（模式 1）均正常
 
