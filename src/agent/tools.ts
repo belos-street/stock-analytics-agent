@@ -10,8 +10,8 @@
 
 import { tool } from 'langchain'
 import { z } from 'zod'
-import { getQuotes, getFundQuotes, getKline, searchStock } from '../sdk'
-import { getDividendYields } from '../dividend'
+import { getQuotes, getFundQuotes, getKline, searchStock } from '../data/sdk'
+import { getDividendYields } from '../data/dividend'
 import { loadSkill, listSkills } from './skills'
 import type { KlinePeriod } from '../types'
 

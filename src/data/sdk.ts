@@ -9,7 +9,7 @@ import type {
   RawFundQuote,
   RawStockQuote,
   SearchResultItem
-} from './types'
+} from '../types'
 
 // 单例模式
 let sdk: StockSDK | null = null

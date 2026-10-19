@@ -4,7 +4,7 @@ import type {
   EastMoneyDividendRecord,
   RawStockQuote,
   SdkDividendRecord
-} from './types'
+} from '../types'
 
 export type { DividendYieldResult }
 

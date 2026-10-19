@@ -12,11 +12,11 @@ export {
   getUSQuotes,
   getKline,
   searchStock
-} from './sdk'
+} from './data/sdk'
 
 // 股息率计算
-export { getDividendYield, getDividendYields } from './dividend'
-export type { DividendYieldResult } from './dividend'
+export { getDividendYield, getDividendYields } from './data/dividend'
+export type { DividendYieldResult } from './data/dividend'
 
 // 输出格式化
 export {
