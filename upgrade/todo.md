@@ -76,12 +76,12 @@ flowchart LR
 - [x] 模型配置：`.env`（OPENAI_API_KEY / OPENAI_BASE_URL / DEFAULT_MODEL），`src/agent/config.ts` 读取 + 校验 + DeepSeek base_url 自动补 `/v1` ✅ 2026-10-19
 - [x] agent 骨架：`src/agent/index.ts`（createAgent + 系统提示含口径纪律）、`src/agent/run.ts`（askOnce + chatLoop REPL）、`main.ts` 新增 `--ask`/`--agent` 命令（不覆盖现有参数）✅ 2026-10-19
 - [x] CLI 能力封装为 tools：`src/agent/tools.ts` 5 个工具（行情/基金/股息/K线/搜索），复用 `src/` 数据层 ✅ 2026-10-19
-- [ ] 将 `.agents/skills` 封装为 agent 可调用的 tools（skill 文档作为工具描述/知识注入）
-- [ ] 端到端验证：用户只改 `.env` 换一个模型配置即可跑通一次完整分析（**待用户填 `.env` 真实 key**）
+- [x] `.agents/skills` 注入 agent：25 个 skill 渐进式披露（目录入系统提示 + `load_skill` 工具按需加载），避免全文爆上下文 ✅ 2026-10-19
+- [x] 端到端验证：DeepSeek 实测跑通完整分析（工具调用、口径标注、月线验证、空方论点全部生效）✅ 2026-10-19
 
 #### 双模式一致性
 
-- [ ] 两种模式共享同一数据层（`src/` CLI 能力），避免逻辑分叉
+- [x] 两种模式共享同一数据层（`src/` CLI 能力），避免逻辑分叉 ✅ 2026-10-19，agent tools 直接调用 src/ 函数，零重复实现
 - [ ] README 说明两种使用方式的选择与切换
 
 ### P2 · 全量 review `.agents/skills`（需求 #5）
