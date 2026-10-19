@@ -43,3 +43,9 @@
 - **结论**：`.oxfmtrc.jsonc` 的 `ignorePatterns` 加入 `**/*.md`，格式化只覆盖代码文件；研究文档（strategy/watchlist/reports 的 md）由内容作者控制排版
 - **理由**：oxfmt 会改动 md 列表空行/换行，churn 污染研究文档 diff 与 review 视线；代码与文档的格式化诉求不同
 - **日期**：2026-10-16
+
+## D8 · LLM 走 OpenAI 兼容接口（DeepSeek）
+
+- **结论**：模式 2 agent 的模型接入统一走 **OpenAI 兼容接口**（`@langchain/openai` + 可配 `OPENAI_BASE_URL`），默认接 DeepSeek。`.env.example` 定义 `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `DEFAULT_MODEL` 三变量，用户填 `.env` 即可跑。`.env` 必须在 `.gitignore` 中
+- **理由**：一套代码通吃 OpenAI / DeepSeek / MoonShot / 月之暗面等兼容端点，无需多 provider 抽象；用户已确认 DeepSeek 为默认
+- **日期**：2026-10-19
