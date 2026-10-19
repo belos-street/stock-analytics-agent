@@ -32,6 +32,8 @@ export interface FormattedDividend {
   current_price: number
   dividend_per_share: number
   yield_rate: number
+  /** 股息率计算口径（单期分红口径，非年度化） */
+  yield_basis: string
   latest_dividend_date: string
   latest_dividend_desc: string
 }
@@ -86,6 +88,7 @@ export function formatDividendYield(data: any): FormattedDividend {
     current_price: data.currentPrice,
     dividend_per_share: data.dividendPerShare,
     yield_rate: data.yieldRate,
+    yield_basis: data.yieldBasis,
     latest_dividend_date: data.latestDividend?.reportDate || '',
     latest_dividend_desc: data.latestDividend?.dividendDesc || ''
   }

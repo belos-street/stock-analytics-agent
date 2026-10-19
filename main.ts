@@ -18,7 +18,7 @@ import {
   getKline,
   searchStock
 } from './src/sdk'
-import { getDividendYield, getDividendYields } from './src/dividend'
+import { getDividendYields } from './src/dividend'
 import {
   formatAndOutputStocks,
   formatAndOutputFunds,
@@ -93,11 +93,7 @@ async function main() {
   const hkP = track(hkCodes.length > 0 ? getHKQuotes(hkCodes) : null)
   const usP = track(usCodes.length > 0 ? getUSQuotes(usCodes) : null)
   const dividendP = track(
-    dividendCodes.length === 0
-      ? null
-      : dividendCodes.length === 1
-        ? getDividendYield(dividendCodes[0]).then((r) => (r ? [r] : []))
-        : getDividendYields(dividendCodes)
+    dividendCodes.length > 0 ? getDividendYields(dividendCodes) : null
   )
   const klineP = track(
     options.kline ? getKline(options.kline, options.period) : null

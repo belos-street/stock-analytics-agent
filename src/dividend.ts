@@ -9,6 +9,12 @@ export interface DividendYieldResult {
   currentPrice: number
   dividendPerShare: number
   yieldRate: number
+  /**
+   * 股息率计算口径说明。
+   * 本结果采用「单期分红口径」（最新一期已实施分红 / 现价），非年度化口径，
+   * 不同标的分红频次不同，横向对比或校准阈值前须先统一口径。
+   */
+  yieldBasis: string
   latestDividend: {
     reportDate: string
     dividendPretax: number
@@ -16,6 +22,10 @@ export interface DividendYieldResult {
     assignProgress: string
   }
 }
+
+/** 股息率口径标注文案（单期分红口径，用于输出标注，避免被误当年度化口径使用） */
+export const YIELD_BASIS =
+  '单期分红口径（最新一期已实施分红/现价，未年度化；分红频次差异会导致横向不可比）'
 
 /**
  * 从东方财富API获取股息率数据
@@ -106,6 +116,7 @@ async function getDividendYieldFromEastMoney(
       currentPrice,
       dividendPerShare,
       yieldRate,
+      yieldBasis: YIELD_BASIS,
       latestDividend: {
         reportDate: latestDividend.EX_DIVIDEND_DATE || '',
         dividendPretax: latestDividend.PRETAX_BONUS_RMB || 0,
@@ -176,6 +187,7 @@ async function getDividendYieldFromSDK(
       currentPrice,
       dividendPerShare,
       yieldRate,
+      yieldBasis: YIELD_BASIS,
       latestDividend: {
         reportDate: latestDividend.reportDate!,
         dividendPretax: latestDividend.dividendPretax!,
