@@ -46,6 +46,8 @@ program
   .option('--search <keyword>', '搜索股票/基金', '')
   .option('-o, --format <type>', '输出格式: json | table | csv', 'json')
   .option('--pretty', 'JSON美化输出', false)
+  .option('--agent', '进入 AI 投资分析对话（需配置 .env 的 LLM 密钥）')
+  .option('--ask <question>', '向 AI 投资分析助手提单个问题')
   .parse(process.argv)
 
 const options = program.opts()
@@ -57,6 +59,22 @@ function track<T>(p: Promise<T> | null): Promise<T> | null {
 }
 
 async function main() {
+  // AI agent 模式：--ask 单次提问 / --agent 交互对话（独立于下方 CLI 数据查询）
+  if (options.agent || options.ask) {
+    try {
+      const { askOnce, chatLoop } = await import('./src/agent/run')
+      if (options.ask) {
+        console.log(await askOnce(options.ask))
+      } else {
+        await chatLoop()
+      }
+    } catch (error: any) {
+      console.error(chalk.red(`启动 AI 助手失败：${error.message}`))
+      process.exit(1)
+    }
+    return
+  }
+
   const hasOptions =
     options.stocks ||
     options.funds ||

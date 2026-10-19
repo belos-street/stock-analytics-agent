@@ -72,12 +72,12 @@ flowchart LR
 
 #### 模式 2 · 独立 CLI 用法（新增 langchainjs）
 
-- [ ] 选定 LangChain.js 具体包与版本（`@langchain/core`、`@langchain/openai` 等 model 包 / LangGraph JS），确认 `createAgent` 接口形态
-- [ ] 设计模型配置方案：`.env` 配置 LLM API key（支持 provider、model、api_key、base_url 由用户自行配置），加载优先级 `.env` > 环境变量
-- [ ] 搭建 agent 骨架：模型加载 + 工具注册 + 对话式运行入口（新增 `agent` 命令，不覆盖现有 CLI 参数）
-- [ ] 将现有 CLI 能力（行情、基金、股息、K线、搜索）封装为 agent tools
+- [x] 选定 LangChain.js 包：`langchain@1.5.18` + `@langchain/core` + `@langchain/openai` + `zod`，API 形态 `createAgent({ model, tools, systemPrompt })` + `tool()` ✅ 2026-10-19
+- [x] 模型配置：`.env`（OPENAI_API_KEY / OPENAI_BASE_URL / DEFAULT_MODEL），`src/agent/config.ts` 读取 + 校验 + DeepSeek base_url 自动补 `/v1` ✅ 2026-10-19
+- [x] agent 骨架：`src/agent/index.ts`（createAgent + 系统提示含口径纪律）、`src/agent/run.ts`（askOnce + chatLoop REPL）、`main.ts` 新增 `--ask`/`--agent` 命令（不覆盖现有参数）✅ 2026-10-19
+- [x] CLI 能力封装为 tools：`src/agent/tools.ts` 5 个工具（行情/基金/股息/K线/搜索），复用 `src/` 数据层 ✅ 2026-10-19
 - [ ] 将 `.agents/skills` 封装为 agent 可调用的 tools（skill 文档作为工具描述/知识注入）
-- [ ] 端到端验证：用户只改 `.env` 换一个模型配置即可跑通一次完整分析
+- [ ] 端到端验证：用户只改 `.env` 换一个模型配置即可跑通一次完整分析（**待用户填 `.env` 真实 key**）
 
 #### 双模式一致性
 
