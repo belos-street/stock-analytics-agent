@@ -109,6 +109,25 @@ flowchart LR
 - [ ] 同步更新引用：`AGENTS.md`、README、`.git/config` remote、lockfile、文档内路径引用
 - [ ] 改名后回归验证：`bun run main.ts`、`bun test`、harness 读取（模式 1）均正常
 
+### ✅ 已落地功能复盘（2026-10-19，供以后回看）
+
+> 以下是 3.0 P1 期间实际实现的功能点，超出原始 5 项需求的增量。
+
+- **agent 双模式**：模式 1 harness 直读（零破坏）+ 模式 2 独立 CLI（`--ask` 单次 / `--agent` 多轮 REPL）
+- **LLM 可配置**：`.env`（API_KEY / BASE_URL / MODEL）+ `.env.example` 模板，DeepSeek 端点自动补 `/v1`，换 `.env` 即换模型
+- **6 个 agent tools**：行情、基金、股息、K线、搜索（复用 `src/` 数据层）+ `load_skill`
+- **skill 渐进式注入**：25 个投资 skill 目录入系统提示 + `load_skill` 按需加载（避免全文爆上下文）
+- **position.md 注入上下文**：agent 开口即知持仓与投资风格，无需每次复述
+- **股息率口径标注**：`yield_basis` 字段标注"单期分红口径，非年度化"，防误当年化（呼应 memory 教训）
+- **口径纪律进系统提示**：长窗口用 monthly、空方论点、不编造数据
+- **AGENTS.md 环境自检 bootstrap**：agent 可自装 bun、自装依赖、自建 position.md
+- **代码质量**：`any` 31→0、类型集中 `src/types.ts`、修 2 处实质 bug（死分支、null 类型遗漏）
+- **工具链**：oxlint + oxcfmt（`**/*.md` 排除）、lint/format/typecheck 全绿
+- **测试**：33 个测试（含 config/skills/position 离线单测 21 个）
+- **决策记忆**：`.agents/memory/decisions.md` D1–D8 + `.agents/rules/`（project_rules、memory）
+- **position.md 格式重构**：单一语义列、新增份额/成本价/操作规则/约束排除字段
+- **记忆评估结论**：不做对话持久化（投资需实时数据、画像已在 position.md）；如需偏好沉淀走 position.md 扩展，不建独立记忆系统
+
 ### 收尾
 
 - [ ] 分批提交代码（新增 / 修改分开提交），**提交前需用户人工确认**
