@@ -23,3 +23,24 @@ export function renderMarkdown(text: string): string {
 export function createSpinner(text = '思考中…'): Ora {
   return ora({ text, spinner: 'dots' })
 }
+
+/**
+ * 流式渲染支持：保存/回退光标 + 清屏。
+ * 流式阶段逐 token 输出原始 markdown（实时感），
+ * 结束后回退清屏重绘彩色成品，兼顾"流式"与"格式化"。
+ */
+
+/** 保存当前光标位置（流式输出前调用） */
+export function saveCursor(): void {
+  process.stdout.write('\x1b[s')
+}
+
+/** 回退到保存的光标并清屏至末尾（流式结束后调用） */
+export function restoreCursorAndClear(): void {
+  process.stdout.write('\x1b[u\x1b[J')
+}
+
+/** 逐 token 写出原始文本（流式） */
+export function writeStream(text: string): void {
+  process.stdout.write(text)
+}

@@ -10,7 +10,13 @@
 
 import { createInvestAgent } from './index'
 import { describeToolCall, renderTrace, type ToolCallRecord } from './trace'
-import { renderMarkdown, createSpinner } from '../cli/render'
+import {
+  renderMarkdown,
+  createSpinner,
+  saveCursor,
+  restoreCursorAndClear,
+  writeStream
+} from '../cli/render'
 
 /** 消息片段：宽松形状，兼容 LangChain BaseMessage（content 类型复杂，用 unknown 收窄） */
 interface MessageLike {
@@ -74,11 +80,17 @@ async function runWithProgress(
   const calls: ToolCallRecord[] = []
   let answer = ''
 
+  // 流式打字机效果仅在真实终端（TTY）生效；管道/脚本调用走一次性渲染
+  const isTTY = process.stdout.isTTY === true
+
   const stream = await agent.streamEvents({ messages }, { version: 'v2' })
 
-  // loading 动画：思考/调工具期间持续旋转，文案随动作更新
+  // loading 动画：思考/调工具期间持续旋转，文案随动作更新（TTY 才有意义）
   const spinner = createSpinner('思考中…')
-  spinner.start()
+  if (isTTY) spinner.start()
+
+  // 流式输出：首个 token 到来时停止 spinner、保存光标，随后逐 token 实时输出
+  let streaming = false
 
   for await (const ev of stream) {
     // 工具开始：spinner 文案实时更新（loading 动画 + 当前动作）
@@ -88,11 +100,28 @@ async function runWithProgress(
         input: ev.data?.input ?? {}
       }
       calls.push(call)
-      spinner.text = describeToolCall(call)
+      if (isTTY) spinner.text = describeToolCall(call)
       continue
     }
 
-    // chain 结束且输出含 messages：更新最终回答
+    // 模型流式增量 token：实时输出原始 markdown，营造"打字机"效果
+    // 仅 TTY 时流式，避免管道下原始流+渲染成品双份输出
+    if (ev.event === 'on_chat_model_stream') {
+      const chunk = (ev.data?.chunk ?? ev.data?.output) as
+        | { content?: unknown }
+        | undefined
+      const delta = chunk ? contentToText(chunk.content) : ''
+      if (!delta || !isTTY) continue
+      if (!streaming) {
+        streaming = true
+        spinner.stop()
+        saveCursor()
+      }
+      writeStream(delta)
+      continue
+    }
+
+    // chain 结束且输出含 messages：更新最终回答（用于重绘 + history）
     const output = ev.data?.output as AgentResultLike | undefined
     if (output?.messages && Array.isArray(output.messages)) {
       const text = extractText(output)
@@ -102,6 +131,12 @@ async function runWithProgress(
   }
 
   spinner.stop()
+
+  // 回退清屏、重绘彩色 markdown 成品（流式源码 → 格式化成品）
+  if (streaming && answer) {
+    restoreCursorAndClear()
+  }
+
   return { answer, calls }
 }
 
