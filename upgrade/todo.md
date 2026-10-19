@@ -130,12 +130,12 @@ flowchart LR
 
 ### P2 · CLI 交互美化（体验优化）
 
-- [ ] **修红字 bug**：`run.ts:88` chatLoop 用 `console.error` 输出回答（终端把 stderr 渲染成红色）→ 改 `console.log` 走 stdout，与 `--ask` 路径一致；提示/错误/状态仍留 stderr
-- [ ] **loading 效果**：agent 思考/调工具期间无反馈，很生硬 → 引入 `ora` 显示 spinner（"思考中…" / "查询行情中…"），回答完成自动停止
+- [x] **修红字 bug**：chatLoop 回答误用 console.error（stderr 被渲染成红色）→ 改 console.log 走 stdout ✅ 2026-10-19（a24c16b）
+- [x] **loading 效果**：ora spinner 动画，思考/调工具期间旋转、文案随动作更新 ✅ 2026-10-19
 - [x] 进度提示：工具调用时实时展示"⚙ 查股息率 sh600036…"（streamEvents + on_tool_start）✅ 2026-10-19
 - [x] 回答溯源清单：回答后输出"📎 本次回答依据"——调了哪些方法论 skill、查了哪些实时数据（防幻觉、可核验）✅ 2026-10-19
-- [ ] 回答文本美化（可选）：标题/表格/加粗渲染，或 chalk 给不同内容层次上色；控制在"清晰不花哨"
-- [ ] 美化后回归验证：REPL 正常色输出、spinner 不残留、`--ask` 路径不受影响
+- [x] 回答文本美化：marked + marked-terminal 渲染标题/表格/加粗/列表（彩色）✅ 2026-10-19
+- [x] 美化后回归验证：REPL 正常色输出、spinner 不残留、`--ask` 路径不受影响 ✅ 2026-10-19
 
 > 📌 根因记录（2026-10-19）：「回答全是红色」不是缺美化，是 `console.error` 误用——stderr 被终端渲染成红色。回答属主输出应走 stdout。
 > ✅ 顺带确认：多轮记忆测试 T1 通过（"刚才那只股票"正确接上招商银行），chatLoop 的 history 记忆路径正常。
