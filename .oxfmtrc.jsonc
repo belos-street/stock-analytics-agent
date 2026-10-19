@@ -22,7 +22,7 @@
     "dist",
     "build",
     "coverage",
-    ".agents",
+    ".agents/business/html-report/template",
     "**/*.md"
   ]
 }

@@ -16,5 +16,11 @@
     "no-debugger": "error",
     "no-unused-vars": "error"
   },
-  "ignorePatterns": ["node_modules", "dist", "build", "coverage", ".agents"]
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    ".agents/business/html-report/template"
+  ]
 }

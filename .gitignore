@@ -19,5 +19,3 @@ Thumbs.db
 # 个人文件
 
 node_modules/
-
-*.lockb
