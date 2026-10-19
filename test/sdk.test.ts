@@ -41,9 +41,8 @@ describe('Stock SDK 测试', () => {
       expect(quotes).toBeDefined()
       expect(quotes.length).toBeGreaterThan(0)
       expect(quotes[0].name).toContain('南方中债')
-      // 基金可能使用 nav 或 price 字段
-      const value = quotes[0].nav || quotes[0].price
-      expect(value).toBeDefined()
+      // 基金净值字段为 nav
+      expect(quotes[0].nav).toBeDefined()
     })
   })
 
@@ -76,7 +75,7 @@ describe('Stock SDK 测试', () => {
       const results = await searchStock('招商银行')
       expect(results).toBeDefined()
       expect(results.length).toBeGreaterThan(0)
-      expect(results.some((r: any) => r.name === '招商银行')).toBe(true)
+      expect(results.some((r) => r.name === '招商银行')).toBe(true)
     })
   })
 })

@@ -68,8 +68,12 @@ async function main() {
       } else {
         await chatLoop()
       }
-    } catch (error: any) {
-      console.error(chalk.red(`启动 AI 助手失败：${error.message}`))
+    } catch (error) {
+      console.error(
+        chalk.red(
+          `启动 AI 助手失败：${error instanceof Error ? error.message : String(error)}`
+        )
+      )
       process.exit(1)
     }
     return
@@ -120,18 +124,22 @@ async function main() {
 
   // 按固定顺序输出各板块结果；单个板块失败不影响其他板块
   const errors: string[] = []
-  async function output(
+  async function output<T>(
     title: string,
-    p: Promise<any> | null,
-    render: (data: any[]) => void
+    p: Promise<T> | null,
+    render: (data: T) => void
   ) {
     if (!p) return
     console.error(chalk.cyan(`\n=== ${title} ===`))
     try {
       const data = await p
       render(data)
-    } catch (error: any) {
-      console.error(chalk.red(`查询失败: ${error.message}`))
+    } catch (error) {
+      console.error(
+        chalk.red(
+          `查询失败: ${error instanceof Error ? error.message : String(error)}`
+        )
+      )
       errors.push(title)
     }
   }

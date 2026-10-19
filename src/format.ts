@@ -3,84 +3,69 @@
  * 保持与 V1.x 输出格式兼容，同时支持新的数据结构
  */
 
-export interface FormattedStock {
-  type: 'stock'
-  code: string
-  name: string
-  current_price: number
-  change: number
-  change_percent: number
-  volume?: number
-  amount?: number
-  market_cap?: number
-  update_time: string
-}
+import type {
+  DividendYieldResult,
+  FormattedDividend,
+  FormattedFund,
+  FormattedStock,
+  RawFundQuote,
+  RawStockQuote
+} from './types'
 
-export interface FormattedFund {
-  type: 'fund'
-  code: string
-  name: string
-  current_price: number
-  change_percent: number
-  update_time: string
-}
+export type {
+  FormattedData,
+  FormattedDividend,
+  FormattedFund,
+  FormattedStock
+} from './types'
 
-export interface FormattedDividend {
-  type: 'dividend'
-  code: string
-  name: string
-  current_price: number
-  dividend_per_share: number
-  yield_rate: number
-  /** 股息率计算口径（单期分红口径，非年度化） */
-  yield_basis: string
-  latest_dividend_date: string
-  latest_dividend_desc: string
+/** 统一时间戳格式化：有 timestamp 用之，否则用当前时间 */
+function formatUpdateTime(timestamp?: number): string {
+  return timestamp
+    ? new Date(timestamp).toLocaleString('zh-CN')
+    : new Date().toLocaleString('zh-CN')
 }
-
-export type FormattedData = FormattedStock | FormattedFund | FormattedDividend
 
 /**
  * 格式化股票行情数据
  */
-export function formatStockQuote(quote: any): FormattedStock {
+export function formatStockQuote(quote: RawStockQuote): FormattedStock {
   return {
     type: 'stock',
-    code: quote.code || quote.symbol || '',
-    name: quote.name || '',
-    current_price: quote.price || 0,
-    change: quote.change || 0,
-    change_percent: quote.changePercent || 0,
+    code: quote.code,
+    name: quote.name,
+    current_price: quote.price,
+    change: quote.change,
+    change_percent: quote.changePercent,
     volume: quote.volume,
     amount: quote.amount,
     market_cap: quote.marketCap,
-    update_time: quote.timestamp
-      ? new Date(quote.timestamp).toLocaleString('zh-CN')
-      : new Date().toLocaleString('zh-CN')
+    // 股票行情无 timestamp 字段（SDK 未返回），更新时间取当前
+    update_time: formatUpdateTime()
   }
 }
 
 /**
  * 格式化基金行情数据
  */
-export function formatFundQuote(quote: any): FormattedFund {
+export function formatFundQuote(quote: RawFundQuote): FormattedFund {
   return {
     type: 'fund',
-    code: quote.code || quote.symbol || '',
-    name: quote.name || '',
-    current_price: quote.price || quote.nav || 0,
+    code: quote.code,
+    name: quote.name,
+    current_price: quote.nav,
     // 基金行情接口没有 changePercent 字段，涨跌幅存放在 change 字段
-    change_percent: quote.changePercent ?? quote.change ?? 0,
-    update_time: quote.timestamp
-      ? new Date(quote.timestamp).toLocaleString('zh-CN')
-      : new Date().toLocaleString('zh-CN')
+    change_percent: quote.change,
+    update_time: formatUpdateTime(quote.timestamp)
   }
 }
 
 /**
  * 格式化股息率数据
  */
-export function formatDividendYield(data: any): FormattedDividend {
+export function formatDividendYield(
+  data: DividendYieldResult
+): FormattedDividend {
   return {
     type: 'dividend',
     code: data.symbol,
@@ -97,8 +82,8 @@ export function formatDividendYield(data: any): FormattedDividend {
 /**
  * 输出数据到控制台
  */
-export function outputData(
-  data: any[],
+export function outputData<T extends object>(
+  data: T[],
   format: 'json' | 'table' | 'csv' = 'json',
   pretty: boolean = false
 ) {
@@ -121,8 +106,9 @@ export function outputData(
       break
 
     case 'csv': {
-      if (data.length > 0) {
-        const headers = Object.keys(data[0]).join(',')
+      const first = data[0]
+      if (first) {
+        const headers = Object.keys(first).join(',')
         const rows = data.map((item) =>
           Object.values(item)
             .map((v) =>
@@ -141,7 +127,7 @@ export function outputData(
  * 格式化并输出股票数据
  */
 export function formatAndOutputStocks(
-  quotes: any[],
+  quotes: RawStockQuote[],
   format: 'json' | 'table' | 'csv' = 'json',
   pretty: boolean = false
 ) {
@@ -153,7 +139,7 @@ export function formatAndOutputStocks(
  * 格式化并输出基金数据
  */
 export function formatAndOutputFunds(
-  quotes: any[],
+  quotes: RawFundQuote[],
   format: 'json' | 'table' | 'csv' = 'json',
   pretty: boolean = false
 ) {
@@ -165,7 +151,7 @@ export function formatAndOutputFunds(
  * 格式化并输出股息率数据
  */
 export function formatAndOutputDividends(
-  data: any[],
+  data: DividendYieldResult[],
   format: 'json' | 'table' | 'csv' = 'json',
   pretty: boolean = false
 ) {

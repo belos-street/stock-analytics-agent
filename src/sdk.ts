@@ -3,6 +3,13 @@ import { execFileSync } from 'child_process'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { StockSDK } from 'stock-sdk'
+import type {
+  KlineBar,
+  KlinePeriod,
+  RawFundQuote,
+  RawStockQuote,
+  SearchResultItem
+} from './types'
 
 // 单例模式
 let sdk: StockSDK | null = null
@@ -33,7 +40,7 @@ function resolveStockSdkBin(): { cmd: string; prefixArgs: string[] } {
  * 通过CLI获取行情（避免Bun编码问题）。
  * stock-sdk CLI 会按代码前缀自动识别市场（sh/sz/hk/us），基金须显式 --market fund。
  */
-function execQuoteCLI(codes: string[], extraArgs: string[] = []): any[] {
+function execQuoteCLI<T>(codes: string[], extraArgs: string[] = []): T[] {
   const validCodes = codes.filter((c) => c.trim())
   if (validCodes.length === 0) return []
 
@@ -52,9 +59,12 @@ function execQuoteCLI(codes: string[], extraArgs: string[] = []): any[] {
       ],
       { encoding: 'utf-8' }
     )
-    return JSON.parse(result)
-  } catch (error: any) {
-    const detail = error.stderr ? error.stderr.toString().trim() : error.message
+    return JSON.parse(result) as T[]
+  } catch (error) {
+    const err = error as { stderr?: Buffer | string; message?: string }
+    const detail = err.stderr
+      ? err.stderr.toString().trim()
+      : (err.message ?? String(error))
     throw new Error(`行情查询失败 (${validCodes.join(',')}): ${detail}`, {
       cause: error
     })
@@ -62,31 +72,36 @@ function execQuoteCLI(codes: string[], extraArgs: string[] = []): any[] {
 }
 
 // A股行情（代码自动识别市场）
-export async function getQuotes(codes: string[]) {
-  return execQuoteCLI(codes)
+export async function getQuotes(codes: string[]): Promise<RawStockQuote[]> {
+  return execQuoteCLI<RawStockQuote>(codes)
 }
 
 // 基金行情（基金必须显式指定 --market fund）
-export async function getFundQuotes(codes: string[]) {
-  return execQuoteCLI(codes, ['--market', 'fund'])
+export async function getFundQuotes(codes: string[]): Promise<RawFundQuote[]> {
+  return execQuoteCLI<RawFundQuote>(codes, ['--market', 'fund'])
 }
 
 // 港股行情（代码自动识别市场）
-export async function getHKQuotes(codes: string[]) {
-  return execQuoteCLI(codes)
+export async function getHKQuotes(codes: string[]): Promise<RawStockQuote[]> {
+  return execQuoteCLI<RawStockQuote>(codes)
 }
 
 // 美股行情（代码自动识别市场）
-export async function getUSQuotes(codes: string[]) {
-  return execQuoteCLI(codes)
+export async function getUSQuotes(codes: string[]): Promise<RawStockQuote[]> {
+  return execQuoteCLI<RawStockQuote>(codes)
 }
 
 // K线数据（使用SDK）
-export async function getKline(symbol: string, period: string = 'daily') {
-  return getSDK().kline.cn(symbol, { period: period as any })
+export async function getKline(
+  symbol: string,
+  period: KlinePeriod = 'daily'
+): Promise<KlineBar[]> {
+  return getSDK().kline.cn(symbol, { period }) as Promise<KlineBar[]>
 }
 
 // 搜索股票
-export async function searchStock(keyword: string) {
-  return getSDK().search(keyword)
+export async function searchStock(
+  keyword: string
+): Promise<SearchResultItem[]> {
+  return getSDK().search(keyword) as Promise<SearchResultItem[]>
 }
