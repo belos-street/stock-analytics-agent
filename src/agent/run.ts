@@ -85,7 +85,8 @@ export async function chatLoop(): Promise<void> {
       const result = await agent.invoke({ messages: history })
       const answer = extractText(result)
       history.push({ role: 'assistant', content: answer })
-      console.error(`\n助手 > ${answer}\n`)
+      // 回答是主输出，走 stdout（stderr 会被终端渲染成红色）
+      console.log(`\n助手 > ${answer}\n`)
     } catch (error) {
       console.error(
         `\n出错：${error instanceof Error ? error.message : String(error)}\n`
