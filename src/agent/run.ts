@@ -8,6 +8,7 @@
  * - 回答后输出溯源清单（调了哪些 skill、查了哪些数据）。
  */
 
+import { createInterface } from 'readline'
 import { createInvestAgent } from './index'
 import { describeToolCall, renderTrace, type ToolCallRecord } from './trace'
 import {
@@ -93,14 +94,18 @@ async function runWithProgress(
   let streaming = false
 
   for await (const ev of stream) {
-    // 工具开始：spinner 文案实时更新（loading 动画 + 当前动作）
+    // 工具开始：spinner 文案实时更新 + 恢复动画（覆盖工具执行的停顿期）
     if (ev.event === 'on_tool_start') {
       const call: ToolCallRecord = {
         name: ev.name ?? 'tool',
         input: ev.data?.input ?? {}
       }
       calls.push(call)
-      if (isTTY) spinner.text = describeToolCall(call)
+      if (isTTY) {
+        if (streaming) writeStream('\n') // 已有流式文本，换行避免 spinner 覆盖
+        spinner.text = describeToolCall(call)
+        if (!spinner.isSpinning) spinner.start()
+      }
       continue
     }
 
@@ -112,9 +117,9 @@ async function runWithProgress(
         | undefined
       const delta = chunk ? contentToText(chunk.content) : ''
       if (!delta || !isTTY) continue
+      if (spinner.isSpinning) spinner.stop() // 有 token 可写，先停动画避免混排
       if (!streaming) {
         streaming = true
-        spinner.stop()
         saveCursor()
       }
       writeStream(delta)
@@ -186,14 +191,16 @@ export async function chatLoop(): Promise<void> {
   console.error('再见 👋')
 }
 
-/** 简易异步输入（Bun/Node 通用） */
+/** 简易异步输入：readline 支持行编辑（方向键移动光标、退格、历史） */
 function prompt(label: string): Promise<string> {
-  process.stderr.write(label)
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stderr
+  })
   return new Promise((resolve) => {
-    const onData = (data: Buffer) => {
-      process.stdin.off('data', onData)
-      resolve(data.toString().trim())
-    }
-    process.stdin.on('data', onData)
+    rl.question(label, (answer) => {
+      rl.close()
+      resolve(answer.trim())
+    })
   })
 }

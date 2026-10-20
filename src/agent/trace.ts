@@ -78,7 +78,6 @@ export function renderTrace(calls: ToolCallRecord[]): string {
   if (queries.length > 0) {
     lines.push(`  实时数据：${queries.join('；')}`)
   }
-  lines.push('  （以上为 agent 实时调用的工具，非记忆编造）')
 
   return lines.join('\n')
 }

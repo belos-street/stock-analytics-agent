@@ -57,7 +57,11 @@ function execQuoteCLI<T>(codes: string[], extraArgs: string[] = []): T[] {
         'json',
         '-q'
       ],
-      { encoding: 'utf-8' }
+      {
+        encoding: 'utf-8',
+        // stderr 捕获而非透传：吞掉 npx/npm 的配置告警噪音，避免混入终端输出
+        stdio: ['ignore', 'pipe', 'pipe']
+      }
     )
     return JSON.parse(result) as T[]
   } catch (error) {
