@@ -8,15 +8,13 @@
  * - 回答后输出溯源清单（调了哪些 skill、查了哪些数据）。
  */
 
-import { createInterface } from 'readline'
+import { createInterface, type Interface } from 'readline'
 import { createInvestAgent } from './index'
 import { describeToolCall, renderTrace, type ToolCallRecord } from './trace'
 import {
   renderMarkdown,
   createSpinner,
-  saveCursor,
-  restoreCursorAndClear,
-  writeStream
+  createBlockStreamer
 } from '../cli/render'
 
 /** 消息片段：宽松形状，兼容 LangChain BaseMessage（content 类型复杂，用 unknown 收窄） */
@@ -84,63 +82,60 @@ async function runWithProgress(
   // 流式打字机效果仅在真实终端（TTY）生效；管道/脚本调用走一次性渲染
   const isTTY = process.stdout.isTTY === true
 
-  const stream = await agent.streamEvents({ messages }, { version: 'v2' })
-
-  // loading 动画：思考/调工具期间持续旋转，文案随动作更新（TTY 才有意义）
+  // 块流式渲染器：按 markdown 块边界输出彩色成品，stdout 始终行对齐
+  const streamer = createBlockStreamer()
   const spinner = createSpinner('思考中…')
-  if (isTTY) spinner.start()
-
-  // 流式输出：首个 token 到来时停止 spinner、保存光标，随后逐 token 实时输出
   let streaming = false
 
-  for await (const ev of stream) {
-    // 工具开始：spinner 文案实时更新 + 恢复动画（覆盖工具执行的停顿期）
-    if (ev.event === 'on_tool_start') {
-      const call: ToolCallRecord = {
-        name: ev.name ?? 'tool',
-        input: ev.data?.input ?? {}
-      }
-      calls.push(call)
-      if (isTTY) {
-        if (streaming) writeStream('\n') // 已有流式文本，换行避免 spinner 覆盖
-        spinner.text = describeToolCall(call)
-        if (!spinner.isSpinning) spinner.start()
-      }
-      continue
-    }
+  try {
+    const stream = await agent.streamEvents({ messages }, { version: 'v2' })
 
-    // 模型流式增量 token：实时输出原始 markdown，营造"打字机"效果
-    // 仅 TTY 时流式，避免管道下原始流+渲染成品双份输出
-    if (ev.event === 'on_chat_model_stream') {
-      const chunk = (ev.data?.chunk ?? ev.data?.output) as
-        | { content?: unknown }
-        | undefined
-      const delta = chunk ? contentToText(chunk.content) : ''
-      if (!delta || !isTTY) continue
-      if (spinner.isSpinning) spinner.stop() // 有 token 可写，先停动画避免混排
-      if (!streaming) {
+    // loading 动画：思考/调工具期间持续旋转（TTY 才有意义）
+    if (isTTY) spinner.start()
+
+    for await (const ev of stream) {
+      // 工具开始：spinner 文案实时更新 + 恢复动画（覆盖工具执行的停顿期）
+      if (ev.event === 'on_tool_start') {
+        const call: ToolCallRecord = {
+          name: ev.name ?? 'tool',
+          input: ev.data?.input ?? {}
+        }
+        calls.push(call)
+        if (isTTY) {
+          spinner.text = describeToolCall(call)
+          if (!spinner.isSpinning) spinner.start()
+        }
+        continue
+      }
+
+      // 模型流式增量 token：推入块流式器，按块边界实时渲染
+      if (ev.event === 'on_chat_model_stream') {
+        const chunk = (ev.data?.chunk ?? ev.data?.output) as
+          | { content?: unknown }
+          | undefined
+        const delta = chunk ? contentToText(chunk.content) : ''
+        if (!delta || !isTTY) continue
+        if (spinner.isSpinning) spinner.stop() // 有 token 可写，先停动画避免混排
         streaming = true
-        saveCursor()
+        streamer.push(delta)
+        continue
       }
-      writeStream(delta)
-      continue
-    }
 
-    // chain 结束且输出含 messages：更新最终回答（用于重绘 + history）
-    const output = ev.data?.output as AgentResultLike | undefined
-    if (output?.messages && Array.isArray(output.messages)) {
-      const text = extractText(output)
-      if (text && text.trim().startsWith('{')) continue // 兜底 JSON 不采纳
-      if (text) answer = text
+      // chain 结束且输出含 messages：更新最终回答（用于 history 与非 TTY 渲染）
+      const output = ev.data?.output as AgentResultLike | undefined
+      if (output?.messages && Array.isArray(output.messages)) {
+        const text = extractText(output)
+        if (text && text.trim().startsWith('{')) continue // 兜底 JSON 不采纳
+        if (text) answer = text
+      }
     }
+  } finally {
+    // 无论正常/异常都停掉 spinner，避免错误提示上残留动画
+    if (spinner.isSpinning) spinner.stop()
   }
 
-  spinner.stop()
-
-  // 回退清屏、重绘彩色 markdown 成品（流式源码 → 格式化成品）
-  if (streaming && answer) {
-    restoreCursorAndClear()
-  }
+  // TTY：冲刷剩余块（最后未闭合部分）
+  if (isTTY && streaming) streamer.end()
 
   return { answer, calls }
 }
@@ -151,6 +146,9 @@ export async function askOnce(question: string): Promise<string> {
   const { answer, calls } = await runWithProgress(agent, [
     { role: 'user', content: question }
   ])
+  // 非 TTY（管道/脚本）：runWithProgress 未流式，此处一次性渲染成品 + 溯源
+  // TTY：块流式已写 stdout，直接返回空串避免双份输出
+  if (process.stdout.isTTY === true) return ''
   const trace = renderTrace(calls)
   return trace ? `${renderMarkdown(answer)}\n${trace}` : renderMarkdown(answer)
 }
@@ -163,43 +161,50 @@ export async function chatLoop(): Promise<void> {
   // 多轮对话历史
   const history: Array<{ role: 'user' | 'assistant'; content: string }> = []
 
-  while (true) {
-    // REPL 逐轮读取用户输入，顺序 await 是交互式对话的必然结构
-    // eslint-disable-next-line no-await-in-loop
-    const question = await prompt('你 > ')
-    if (!question) continue
-    const trimmed = question.trim()
-    if (['exit', 'quit', 'q'].includes(trimmed.toLowerCase())) break
+  // readline 全程复用一个实例：跨问题保留输入历史（↑ 调出上一条），不反复抢 stdin
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stderr,
+    historySize: 100
+  })
 
-    history.push({ role: 'user', content: trimmed })
-    try {
-      // 对话循环需逐轮顺序处理（上一轮回答进入下一轮上下文），await-in-loop 是设计必然
+  try {
+    while (true) {
+      // REPL 逐轮读取用户输入，顺序 await 是交互式对话的必然结构
       // eslint-disable-next-line no-await-in-loop
-      const { answer, calls } = await runWithProgress(agent, history)
-      history.push({ role: 'assistant', content: answer })
-      // 回答走 markdown 彩色渲染（stdout）；history 存纯文本避免重复转义
-      console.log(`\n${renderMarkdown(answer)}`)
-      // 溯源清单
-      const trace = renderTrace(calls)
-      if (trace) console.log(`${trace}\n`)
-    } catch (error) {
-      console.error(
-        `\n出错：${error instanceof Error ? error.message : String(error)}\n`
-      )
+      const question = await prompt(rl, '你 > ')
+      if (!question) continue
+      const trimmed = question.trim()
+      if (['exit', 'quit', 'q'].includes(trimmed.toLowerCase())) break
+
+      history.push({ role: 'user', content: trimmed })
+      try {
+        // 对话循环需逐轮顺序处理（上一轮回答进入下一轮上下文），await-in-loop 是设计必然
+        // eslint-disable-next-line no-await-in-loop
+        const { answer, calls } = await runWithProgress(agent, history)
+        history.push({ role: 'assistant', content: answer })
+        // TTY：块流式已输出，仅补溯源；非 TTY 不适用（REPL 必为 TTY），此处兜底渲染
+        if (process.stdout.isTTY !== true) {
+          console.log(`\n${renderMarkdown(answer)}`)
+        }
+        const trace = renderTrace(calls)
+        if (trace) console.log(`${trace}\n`)
+      } catch (error) {
+        console.error(
+          `\n出错：${error instanceof Error ? error.message : String(error)}\n`
+        )
+      }
     }
+  } finally {
+    rl.close()
   }
   console.error('再见 👋')
 }
 
-/** 简易异步输入：readline 支持行编辑（方向键移动光标、退格、历史） */
-function prompt(label: string): Promise<string> {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stderr
-  })
+/** 复用 readline 实例读取一行（保留输入历史与行编辑） */
+function prompt(rl: Interface, label: string): Promise<string> {
   return new Promise((resolve) => {
     rl.question(label, (answer) => {
-      rl.close()
       resolve(answer.trim())
     })
   })
