@@ -71,7 +71,7 @@ export interface SearchResultItem {
 /** K线周期 */
 export type KlinePeriod = 'daily' | 'weekly' | 'monthly'
 
-// ── 股息率（src/dividend.ts 计算结果） ─────────────────────────
+// ── 股息率（src/data/dividend.ts 计算结果） ─────────────────────────
 
 /**
  * 股息率计算结果

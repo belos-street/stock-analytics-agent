@@ -1,5 +1,5 @@
 /**
- * Stock Analytics Skill V2.0
+ * Stock Analytics Skill V3.0
  * 基于 stock-sdk 的股市投资分析助手
  */
 
