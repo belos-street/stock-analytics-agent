@@ -78,21 +78,38 @@ export const getDividendYield = tool(
   }
 )
 
-/** K线数据 */
+/** K线数据（默认截取近期 limit 条，避免全量 bars 灌爆上下文） */
 export const getKlineData = tool(
-  async ({ code, period }: { code: string; period?: KlinePeriod }) => {
-    return toJson(await getKline(code, period || 'daily'))
+  async ({
+    code,
+    period,
+    limit
+  }: {
+    code: string
+    period?: KlinePeriod
+    limit?: number
+  }) => {
+    const bars = await getKline(code, period || 'daily')
+    const n = limit && limit > 0 ? limit : 60
+    return toJson({
+      code,
+      period: period || 'daily',
+      total: bars.length,
+      note: `仅返回最近 ${Math.min(n, bars.length)} 条（共 ${bars.length} 条）`,
+      bars: bars.slice(-n)
+    })
   },
   {
     name: 'get_kline',
     description:
-      '查询 K线数据，用于判断年内高点、回撤、价格走势。period 可选 daily/weekly/monthly——判断"年内最高价"等长窗口口径必须用 monthly。',
+      '查询 K线数据，用于判断年内高点、回撤、价格走势。period 可选 daily/weekly/monthly——判断"年内最高价"等长窗口口径必须用 monthly。默认返回最近 60 条，可用 limit 调整；需更长历史时提高 limit 或换 monthly。',
     schema: z.object({
       code: z.string().describe('单个代码（如 sh600519）'),
       period: z
         .enum(['daily', 'weekly', 'monthly'])
         .optional()
-        .describe('K线周期，默认 daily')
+        .describe('K线周期，默认 daily'),
+      limit: z.number().optional().describe('返回最近 N 条，默认 60')
     })
   }
 )

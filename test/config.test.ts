@@ -8,7 +8,12 @@ import { loadModelConfig } from '../src/agent/config'
  * 用例内显式设置、结束后恢复，避免互相污染。
  */
 
-const ENV_KEYS = ['OPENAI_API_KEY', 'OPENAI_BASE_URL', 'DEFAULT_MODEL'] as const
+const ENV_KEYS = [
+  'OPENAI_API_KEY',
+  'OPENAI_BASE_URL',
+  'DEFAULT_MODEL',
+  'OPENAI_APPEND_V1'
+] as const
 let savedEnv: Record<string, string | undefined> = {}
 
 beforeEach(() => {
@@ -42,23 +47,23 @@ describe('loadModelConfig', () => {
     expect(() => loadModelConfig()).toThrow('缺少 OPENAI_API_KEY')
   })
 
-  test('读取 API key 与默认模型', () => {
+  test('缺少 DEFAULT_MODEL 时报错引导配置（不做厂商兜底）', () => {
     process.env.OPENAI_API_KEY = 'sk-test'
-    const config = loadModelConfig()
-    expect(config.apiKey).toBe('sk-test')
-    expect(config.model).toBe('deepseek-v4-flash')
-    expect(config.baseURL).toBeUndefined()
+    expect(() => loadModelConfig()).toThrow('缺少 DEFAULT_MODEL')
   })
 
-  test('DEFAULT_MODEL 显式指定时优先生效', () => {
+  test('读取 API key 与模型名', () => {
     process.env.OPENAI_API_KEY = 'sk-test'
-    process.env.DEFAULT_MODEL = 'gpt-4o-mini'
+    process.env.DEFAULT_MODEL = 'deepseek-chat'
     const config = loadModelConfig()
-    expect(config.model).toBe('gpt-4o-mini')
+    expect(config.apiKey).toBe('sk-test')
+    expect(config.model).toBe('deepseek-chat')
+    expect(config.baseURL).toBeUndefined()
   })
 
   test('API key 两端空白被裁剪', () => {
     process.env.OPENAI_API_KEY = '  sk-pad  '
+    process.env.DEFAULT_MODEL = 'deepseek-chat'
     const config = loadModelConfig()
     expect(config.apiKey).toBe('sk-pad')
   })
@@ -67,6 +72,7 @@ describe('loadModelConfig', () => {
 describe('base URL 归一化（经 loadModelConfig 间接测）', () => {
   test('裸域名自动补 /v1', () => {
     process.env.OPENAI_API_KEY = 'sk-test'
+    process.env.DEFAULT_MODEL = 'm'
     process.env.OPENAI_BASE_URL = 'https://api.deepseek.com'
     const config = loadModelConfig()
     expect(config.baseURL).toBe('https://api.deepseek.com/v1')
@@ -74,6 +80,7 @@ describe('base URL 归一化（经 loadModelConfig 间接测）', () => {
 
   test('已有 /v1 不重复补全', () => {
     process.env.OPENAI_API_KEY = 'sk-test'
+    process.env.DEFAULT_MODEL = 'm'
     process.env.OPENAI_BASE_URL = 'https://api.deepseek.com/v1'
     const config = loadModelConfig()
     expect(config.baseURL).toBe('https://api.deepseek.com/v1')
@@ -81,6 +88,7 @@ describe('base URL 归一化（经 loadModelConfig 间接测）', () => {
 
   test('更高版本号路径保留（/v2 不被误改成 /v1）', () => {
     process.env.OPENAI_API_KEY = 'sk-test'
+    process.env.DEFAULT_MODEL = 'm'
     process.env.OPENAI_BASE_URL = 'https://example.com/v2'
     const config = loadModelConfig()
     expect(config.baseURL).toBe('https://example.com/v2')
@@ -88,6 +96,7 @@ describe('base URL 归一化（经 loadModelConfig 间接测）', () => {
 
   test('末尾斜杠被清理后再补 /v1', () => {
     process.env.OPENAI_API_KEY = 'sk-test'
+    process.env.DEFAULT_MODEL = 'm'
     process.env.OPENAI_BASE_URL = 'https://api.moonshot.cn/'
     const config = loadModelConfig()
     expect(config.baseURL).toBe('https://api.moonshot.cn/v1')
@@ -95,8 +104,21 @@ describe('base URL 归一化（经 loadModelConfig 间接测）', () => {
 
   test('多个末尾斜杠同样被清理', () => {
     process.env.OPENAI_API_KEY = 'sk-test'
+    process.env.DEFAULT_MODEL = 'm'
     process.env.OPENAI_BASE_URL = 'https://example.com///'
     const config = loadModelConfig()
     expect(config.baseURL).toBe('https://example.com/v1')
+  })
+
+  test('OPENAI_APPEND_V1=false 时保留原始 URL（适配 Azure / 网关路由）', () => {
+    process.env.OPENAI_API_KEY = 'sk-test'
+    process.env.DEFAULT_MODEL = 'm'
+    process.env.OPENAI_BASE_URL =
+      'https://xxx.openai.azure.com/openai/deployments/gpt'
+    process.env.OPENAI_APPEND_V1 = 'false'
+    const config = loadModelConfig()
+    expect(config.baseURL).toBe(
+      'https://xxx.openai.azure.com/openai/deployments/gpt'
+    )
   })
 })

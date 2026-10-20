@@ -17,22 +17,25 @@ export interface ModelConfig {
   model: string
 }
 
-/** 默认模型（用户未配置时的兜底） */
-const DEFAULT_MODEL_FALLBACK = 'deepseek-v4-flash'
-
 /**
  * 归一化 base URL：部分 OpenAI 兼容端点需带 /v1 才能命中 chat/completions。
- * 已含 /v1 或更深路径则原样保留，否则补 /v1。
+ * 已含版本号（/v1、/v2…）则原样保留，否则补 /v1。
+ *
+ * 仅在 `OPENAI_APPEND_V1` 非 'false' 时补后缀——Azure OpenAI、路径路由型网关
+ * 需要保留原始 URL，可在 .env 设 `OPENAI_APPEND_V1=false` 关闭。
  */
 function normalizeBaseURL(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, '')
   if (!trimmed) return trimmed
+  const appendV1 =
+    process.env.OPENAI_APPEND_V1?.trim().toLowerCase() !== 'false'
+  if (!appendV1) return trimmed
   return /\/v\d+$/i.test(trimmed) ? trimmed : `${trimmed}/v1`
 }
 
 /**
  * 读取并校验模型配置。
- * 缺少 API key 时抛出明确错误，引导用户配置 .env。
+ * 缺少 API key / 模型名时抛出明确错误，引导用户配置 .env（不做厂商特定兜底）。
  */
 export function loadModelConfig(): ModelConfig {
   const apiKey = process.env.OPENAI_API_KEY?.trim()
@@ -43,8 +46,15 @@ export function loadModelConfig(): ModelConfig {
     )
   }
 
+  const model = process.env.DEFAULT_MODEL?.trim()
+  if (!model) {
+    throw new Error(
+      '缺少 DEFAULT_MODEL（模型名因供应商而异，不做默认兜底）。\n' +
+        '请在 .env 填写，例如 DeepSeek 用 DEFAULT_MODEL=deepseek-chat。'
+    )
+  }
+
   const rawBaseURL = process.env.OPENAI_BASE_URL?.trim()
-  const model = process.env.DEFAULT_MODEL?.trim() || DEFAULT_MODEL_FALLBACK
 
   return {
     apiKey,
