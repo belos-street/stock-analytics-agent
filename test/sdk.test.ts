@@ -5,7 +5,7 @@ import {
   getHKQuotes,
   getKline,
   searchStock
-} from '../src/sdk'
+} from '../src/data/sdk'
 
 describe('Stock SDK 测试', () => {
   // A股行情测试
