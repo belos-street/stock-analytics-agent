@@ -1,22 +1,16 @@
-import { getSDK } from './sdk'
-import { getQuotes } from './sdk'
+import { getQuotes, getSDK } from './sdk'
+import type {
+  DividendYieldResult,
+  EastMoneyDividendRecord,
+  RawStockQuote,
+  SdkDividendRecord
+} from '../types'
 
-/**
- * 股息率计算结果
- */
-export interface DividendYieldResult {
-  symbol: string
-  name: string
-  currentPrice: number
-  dividendPerShare: number
-  yieldRate: number
-  latestDividend: {
-    reportDate: string
-    dividendPretax: number
-    dividendDesc: string
-    assignProgress: string
-  }
-}
+export type { DividendYieldResult }
+
+/** 股息率口径标注文案（单期分红口径，用于输出标注，避免被误当年度化口径使用） */
+export const YIELD_BASIS =
+  '单期分红口径（最新一期已实施分红/现价，未年度化；分红频次差异会导致横向不可比）'
 
 /**
  * 从东方财富API获取股息率数据
@@ -25,7 +19,7 @@ export interface DividendYieldResult {
  */
 async function getDividendYieldFromEastMoney(
   symbol: string,
-  quote?: any
+  quote?: RawStockQuote
 ): Promise<DividendYieldResult | null> {
   try {
     // 提取纯数字代码（去掉sh/sz前缀）
@@ -57,7 +51,10 @@ async function getDividendYieldFromEastMoney(
       return null
     }
 
-    const data = await response.json()
+    const data: {
+      code?: number
+      result?: { data?: EastMoneyDividendRecord[] }
+    } = await response.json()
 
     if (data.code !== 0 || !data.result?.data?.length) {
       console.error(`东方财富API返回无数据: ${symbol}`)
@@ -69,7 +66,7 @@ async function getDividendYieldFromEastMoney(
     // 获取当前股价（优先使用预先获取的行情，否则单独查询）
     if (!quote) {
       const quotes = await getQuotes([symbol])
-      quote = quotes?.[0]
+      quote = quotes[0]
     }
     if (!quote) {
       console.error(`未获取到行情数据: ${symbol}`)
@@ -81,7 +78,10 @@ async function getDividendYieldFromEastMoney(
 
     // 找到最新的已实施分红
     const latestDividend = dividends.find(
-      (d: any) => d.ASSIGN_PROGRESS === '实施分配' && d.PRETAX_BONUS_RMB != null
+      (d) =>
+        d.ASSIGN_PROGRESS === '实施分配' &&
+        d.PRETAX_BONUS_RMB !== null &&
+        d.PRETAX_BONUS_RMB !== undefined
     )
 
     if (!latestDividend) {
@@ -100,10 +100,11 @@ async function getDividendYieldFromEastMoney(
 
     return {
       symbol,
-      name: stockName!,
+      name: stockName,
       currentPrice,
       dividendPerShare,
       yieldRate,
+      yieldBasis: YIELD_BASIS,
       latestDividend: {
         reportDate: latestDividend.EX_DIVIDEND_DATE || '',
         dividendPretax: latestDividend.PRETAX_BONUS_RMB || 0,
@@ -123,15 +124,16 @@ async function getDividendYieldFromEastMoney(
  */
 async function getDividendYieldFromSDK(
   symbol: string,
-  quote?: any
+  quote?: RawStockQuote
 ): Promise<DividendYieldResult | null> {
   const sdk = getSDK()
 
   try {
     // 获取分红历史
-    const dividends = await sdk.reference.dividendDetail(symbol)
+    const dividends: SdkDividendRecord[] =
+      (await sdk.reference.dividendDetail(symbol)) ?? []
 
-    if (!dividends || dividends.length === 0) {
+    if (dividends.length === 0) {
       console.error(`未获取到分红数据: ${symbol}`)
       return null
     }
@@ -139,7 +141,7 @@ async function getDividendYieldFromSDK(
     // 获取当前股价（优先使用预先获取的行情，否则单独查询）
     if (!quote) {
       const quotes = await getQuotes([symbol])
-      quote = quotes?.[0]
+      quote = quotes[0]
     }
     if (!quote) {
       console.error(`未获取到行情数据: ${symbol}`)
@@ -151,7 +153,10 @@ async function getDividendYieldFromSDK(
 
     // 找到最新的已实施分配的分红
     const latestDividend = dividends.find(
-      (d: any) => d.assignProgress === '实施分配' && d.dividendPretax != null
+      (d) =>
+        d.assignProgress === '实施分配' &&
+        d.dividendPretax !== null &&
+        d.dividendPretax !== undefined
     )
 
     if (!latestDividend) {
@@ -167,15 +172,16 @@ async function getDividendYieldFromSDK(
 
     return {
       symbol,
-      name: stockName!,
+      name: stockName,
       currentPrice,
       dividendPerShare,
       yieldRate,
+      yieldBasis: YIELD_BASIS,
       latestDividend: {
-        reportDate: latestDividend.reportDate!,
-        dividendPretax: latestDividend.dividendPretax!,
-        dividendDesc: latestDividend.dividendDesc!,
-        assignProgress: latestDividend.assignProgress!
+        reportDate: latestDividend.reportDate || '',
+        dividendPretax: latestDividend.dividendPretax || 0,
+        dividendDesc: latestDividend.dividendDesc || '',
+        assignProgress: latestDividend.assignProgress || ''
       }
     }
   } catch (error) {
@@ -190,7 +196,7 @@ async function getDividendYieldFromSDK(
  */
 export async function getDividendYield(
   symbol: string,
-  quote?: any
+  quote?: RawStockQuote
 ): Promise<DividendYieldResult | null> {
   // 优先使用东方财富API
   const eastMoneyResult = await getDividendYieldFromEastMoney(symbol, quote)
@@ -210,17 +216,19 @@ export async function getDividendYield(
 export async function getDividendYields(
   symbols: string[]
 ): Promise<DividendYieldResult[]> {
-  let quotes: any[] = []
+  let quotes: RawStockQuote[] = []
   try {
     quotes = await getQuotes(symbols)
-  } catch (error: any) {
-    console.error(`批量行情获取失败: ${error.message}`)
+  } catch (error) {
+    console.error(
+      `批量行情获取失败: ${error instanceof Error ? error.message : String(error)}`
+    )
   }
 
   const results = await Promise.all(
     symbols.map((symbol) => {
       const code = symbol.replace(/^(sh|sz)/, '')
-      const quote = quotes.find((q: any) => q.code === code)
+      const quote = quotes.find((q) => q.code === code)
       return getDividendYield(symbol, quote)
     })
   )

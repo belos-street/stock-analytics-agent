@@ -1,11 +1,12 @@
 {
-  "$schema": "https://json.schemastore.org/prettierrc",
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "arrowParens": "always",
+  "bracketSameLine": true,
   "bracketSpacing": true,
   "embeddedLanguageFormatting": "auto",
+  "endOfLine": "lf",
   "htmlWhitespaceSensitivity": "ignore",
   "insertPragma": false,
-  "bracketSameLine": true,
   "jsxSingleQuote": false,
   "printWidth": 80,
   "proseWrap": "preserve",
@@ -16,5 +17,12 @@
   "tabWidth": 2,
   "trailingComma": "none",
   "useTabs": false,
-  "endOfLine": "lf"
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    ".agents/business/html-report/template",
+    "**/*.md"
+  ]
 }

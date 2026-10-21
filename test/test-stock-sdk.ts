@@ -7,6 +7,7 @@
 
 import { StockSDK } from 'stock-sdk'
 import { execSync } from 'child_process'
+import type { RawStockQuote } from '../src/types'
 
 const sdk = new StockSDK()
 
@@ -14,23 +15,24 @@ const sdk = new StockSDK()
 interface TestResult {
   name: string
   success: boolean
-  data?: any
+  data?: unknown
   error?: string
 }
 
 const results: TestResult[] = []
 
 // 测试函数
-async function test(name: string, fn: () => Promise<any>) {
+async function test<T>(name: string, fn: () => Promise<T>): Promise<T | null> {
   try {
     console.log(`\n🧪 测试: ${name}`)
     const data = await fn()
     results.push({ name, success: true, data })
     console.log(`✅ 成功`)
     return data
-  } catch (error: any) {
-    results.push({ name, success: false, error: error.message })
-    console.log(`❌ 失败: ${error.message}`)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    results.push({ name, success: false, error: message })
+    console.log(`❌ 失败: ${message}`)
     return null
   }
 }
@@ -41,7 +43,7 @@ function printSeparator() {
 }
 
 // 格式化输出
-function printJson(data: any, limit = 3) {
+function printJson(data: unknown, limit = 3) {
   if (Array.isArray(data)) {
     console.log(JSON.stringify(data.slice(0, limit), null, 2))
     if (data.length > limit) {
@@ -53,12 +55,12 @@ function printJson(data: any, limit = 3) {
 }
 
 // 通过 CLI 执行命令
-function execCLI(command: string): any {
+function execCLI<T>(command: string): T {
   try {
     const result = execSync(`npx stock-sdk ${command}`, { encoding: 'utf-8' })
-    return JSON.parse(result)
+    return JSON.parse(result) as T
   } catch (error) {
-    throw new Error(`CLI 命令执行失败: ${command}`)
+    throw new Error(`CLI 命令执行失败: ${command}`, { cause: error })
   }
 }
 
@@ -148,7 +150,7 @@ async function main() {
     }
 
     // 获取当前股价（使用CLI）
-    const quotes = execCLI('quote sh600941 --format json -q')
+    const quotes = execCLI<RawStockQuote[]>('quote sh600941 --format json -q')
     if (!quotes || quotes.length === 0) {
       throw new Error('未获取到行情数据')
     }
@@ -172,7 +174,7 @@ async function main() {
       throw new Error('未获取到分红数据')
     }
 
-    const quotes = execCLI('quote sh600036 --format json -q')
+    const quotes = execCLI<RawStockQuote[]>('quote sh600036 --format json -q')
     if (!quotes || quotes.length === 0) {
       throw new Error('未获取到行情数据')
     }
@@ -206,9 +208,9 @@ async function main() {
   console.log('🔍 8. 搜索功能测试')
 
   await test('搜索股票 - 招商银行', async () => {
-    const results = await sdk.search('招商银行')
-    printJson(results)
-    return results
+    const found = await sdk.search('招商银行')
+    printJson(found)
+    return found
   })
 
   // ==================== 测试结果汇总 ====================
