@@ -17,6 +17,8 @@ Thumbs.db
 *.log
 
 # 个人文件
+strategy/
+watchlist/
 
 node_modules/
 
