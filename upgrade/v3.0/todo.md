@@ -108,12 +108,12 @@ flowchart LR
 
 ### P2 · 项目改名 stock-analytics-agent（已拍板 2026-10-16）
 
-- [ ] GitHub 仓库改名 `belos-street/stock-analytics-skill` → `belos-street/stock-analytics-agent`（GitHub 自动重定向旧 URL）— 待用户执行
+- [x] GitHub 仓库改名 → `belos-street/stock-analytics-agent` ✅ 2026-10-21（用户执行，旧 URL 自动重定向）
 - [ ] 本地目录改名 `/Volumes/jiangzhi-ssd/code/personal/stock-analytics-skill` → `.../stock-analytics-agent` — 待用户执行（会改会话 cwd）
 - [x] `package.json`：`name` → `stock-analytics-agent` ✅ 2026-10-21，bin 名 `stock-analytics` 保留
 - [x] 版本号口径统一 ✅ `package.json`/`program.ts` = 3.0.1、`main.ts` 注释 "V3.0"
-- [ ] 同步更新引用：✅ package.json name / README / AGENTS.md（后者无旧名引用）；⬜ `.git/config` remote、lockfile 随 GitHub 改名后更新
-- [ ] 改名后回归验证：`bun run main.ts`、`bun test`、harness 读取（模式 1）均正常
+- [x] 同步更新引用 ✅ `.git/config` remote 已指 `stock-analytics-agent`、README/AGENTS.md/package.json 无旧名、lockfile 无旧名引用
+- [x] 改名后回归验证 ✅ `bun run main.ts` 冒烟 + `bun test` 34 pass
 
 ### ✅ 已落地功能复盘（2026-10-19，供以后回看）
 
