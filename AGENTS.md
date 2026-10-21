@@ -944,7 +944,7 @@ bun run main.ts --dividend sh600941,sh515450 --pretty
 | 你要做什么                                  | 去哪个目录                          | 示例                                                              |
 | ------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------- |
 | 投资分析、市场研究、选股、估值、复盘        | `.agents/skills/`（25 个投资技能）  | 分析持仓 → `stock-deep-analysis`                                  |
-| 生成/审核交付物（报告、HTML、图表）         | `.agents/business/`（交付生产技能） | 生成 HTML 报告 → `html-report`；交付前审查 → `report-review`      |
+| 生成/审核交付物（报告、HTML、图表） | `.agents/business/`（交付生产技能） | 生成 HTML 报告 → `html-report`；交付前审查 → `report-review`；Skill 质量/合规评审 → `skill-quality-review` |
 | 写代码 / 改代码 / 定工程规范 / 澄清模糊需求 | `.agents/dev/`（开发流程技能）      | 编码规范 → `belos-street`；Bun API → `bun`；需求澄清 → `grill-me` |
 
 **检索规则**：投资问题只搜 `skills/`；交付报告搜 `business/`；代码工程搜 `dev/`。触发场景互不重叠，选错目录会引入噪音。
@@ -956,7 +956,7 @@ bun run main.ts --dividend sh600941,sh515450 --pretty
 - **持仓配置**：`position.md` ← 详细持仓信息
 - **Agent配置**：`agents.md` ← 本文件
 - **投资技能**：`.agents/skills/` ← 股票分析内容技能（25 个）
-- **业务技能**：`.agents/business/` ← 交付/生产类技能（`html-report`：HTML 报告生成封装；`report-review`：交付前多维审查）
+- **业务技能**：`.agents/business/` ← 交付/生产技能（`html-report`：HTML 报告生成封装；`report-review`：交付前多维审查；`skill-quality-review`：Skill 质量/合规评审）
 - **开发技能**：`.agents/dev/` ← 编码规范与开发流程（`belos-street`、`bun`、`grill-me`）
 - **规则**：`.agents/rules/` ← alwaysApply 行为约束（`project_rules`：代码/交付/口径纪律；`memory`：决策沉淀规则）
 - **决策记忆**：`.agents/memory/decisions.md` ← 追加式决策日志 D1…Dn，承接既有约定任务前先读
