@@ -1,4 +1,4 @@
-# Stock Analytics Skill - 股市投资分析助手
+# Stock Analytics Agent - 股市投资分析助手
 
 > 🚀 **V3.0 升级** - 2026年10月
 > - **双模式**：harness 直读（模式1）+ LangChain.js 独立 CLI Agent（模式2）
@@ -8,7 +8,7 @@
 
 ## 项目简介
 
-Stock Analytics Skill 是一个基于大语言模型（LLM）的股市投资分析技能集，专为个人投资者设计。它通过**模块化 Skill 架构** + **本地数据获取工具** + **AI Agent 双模式**，帮助投资者进行市场分析、资产配置和投资决策。
+Stock Analytics Agent 是一个基于大语言模型（LLM）的股市投资分析智能体，专为个人投资者设计。它通过**模块化 Skill 架构** + **本地数据获取工具** + **AI Agent 双模式**，帮助投资者进行市场分析、资产配置和投资决策。
 
 ## 核心特点
 
@@ -80,16 +80,13 @@ graph TB
 
 ## 投资理念
 
-```
-核心原则：长期持有、分红再投入、不波段、不追热点、年度再平衡
-风险偏好：中低风险为主，小仓位高弹性进攻，严控回撤
-```
+投资理念与风险偏好**由 `position.md` 按每位投资者自定义**，工具不预设立场——长期复利、成长、价值、红利、量化等不同风格均可适配。
 
 ## Skill 技能清单
 
 ### 投资分析 skill（25 个 · `.agents/skills/`）
 
-<details><summary>市场分析类（8）</summary>
+#### 市场分析类（8）
 
 | Skill | 功能 |
 |-------|------|
@@ -101,9 +98,8 @@ graph TB
 | hk-stock-analysis | 港股市场、南向资金、AH 联动 |
 | announcement-analysis | 公告与财报解读 |
 | credit-analysis | 主体信用资质、违约概率评估 |
-</details>
 
-<details><summary>ETF / 基金类（8）</summary>
+#### ETF / 基金类（8）
 
 | Skill | 功能 |
 |-------|------|
@@ -115,9 +111,8 @@ graph TB
 | fund-screening | 按风险偏好筛选基金 |
 | fund-comparison | 多只基金对比 |
 | asset-allocation-rebalancing | 资产配置与再平衡 |
-</details>
 
-<details><summary>个股 / 估值类（9）</summary>
+#### 个股 / 估值类（9）
 
 | Skill | 功能 |
 |-------|------|
@@ -130,7 +125,6 @@ graph TB
 | investment-idea-generator | 量化筛选、主题扫描 |
 | thematic-stock-picker | 按主题选股（AI/新能源等） |
 | growth-stock-screener | 八维成长股筛选 |
-</details>
 
 ### 业务技能（`.agents/business/`）
 
