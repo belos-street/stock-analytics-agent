@@ -125,7 +125,7 @@ description: 股票Skill质量评审技能（金融内容质量评审专家）�
 
 ## 模式 B · Skill 文本评审（SKILL.md）
 
-评审 SKILL.md 规则/模板本身的系统性缺陷。以下清单沉淀自 `upgrade/skills_review.md` 的审查方法，**修订后批量复检时按此逐条过**：
+评审 SKILL.md 规则/模板本身的系统性缺陷。以下清单沉淀自 `upgrade/v3.0/skills_review.md` 的审查方法，**修订后批量复检时按此逐条过**：
 
 | # | 检查项 | 判定方法 |
 |---|---|---|
@@ -138,7 +138,7 @@ description: 股票Skill质量评审技能（金融内容质量评审专家）�
 | B7 | 事实硬伤 | ETF/代码错误、名称错误、「保本」类误导、无出处精确财务数字、内部数字自相矛盾（同文两处数值不一致） |
 | B8 | memory/hard constraint 对齐 | 持仓硬编码快照不指向 position.md/CLI；未校验单只高风险 ETF≤5%、风格重复暴露；仓位口径与项目约定冲突 |
 
-**输出格式（模式 B）**：沿用 `upgrade/skills_review.md` 风格——
+**输出格式（模式 B）**：沿用 `upgrade/v3.0/skills_review.md` 风格——
 
 ```markdown
 ### [严重度][维度] 问题描述 → 建议

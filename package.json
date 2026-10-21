@@ -1,5 +1,5 @@
 {
-  "name": "stock-analytics-skill",
+  "name": "stock-analytics-agent",
   "version": "3.0.1",
   "bin": {
     "stock-analytics": "./main.ts"

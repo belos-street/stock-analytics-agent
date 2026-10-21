@@ -1,28 +1,82 @@
 # Stock Analytics Skill - 股市投资分析助手
 
-> 🎉 **V2.0 升级** - 2026年6月25日
-> - 重构为基于 [stock-sdk](https://github.com/chengzuopeng/stock-sdk) 的架构
-> - 新增股息率计算功能
-> - 支持A股、港股、美股、基金多市场
-> - 84个SDK方法，覆盖更多数据维度
+> 🚀 **V3.0 升级** - 2026年10月
+> - **双模式**：harness 直读（模式1）+ LangChain.js 独立 CLI Agent（模式2）
+> - **LLM 可配置**：`.env` 一键切换模型（DeepSeek / MoonShot 等 OpenAI 兼容端点）
+> - **25 个投资 skill** + business/dev 技能，口径统一、可核验、含空方论点
+> - **CLI 美化**：流式输出、彩色 Markdown、实时进度、回答溯源清单
 
 ## 项目简介
 
-Stock Analytics Skill 是一个基于大语言模型（LLM）的股市投资分析技能集，专为个人投资者设计。它通过模块化的Skill架构和本地数据获取工具，帮助投资者进行市场分析、资产配置和投资决策。
+Stock Analytics Skill 是一个基于大语言模型（LLM）的股市投资分析技能集，专为个人投资者设计。它通过**模块化 Skill 架构** + **本地数据获取工具** + **AI Agent 双模式**，帮助投资者进行市场分析、资产配置和投资决策。
 
 ## 核心特点
 
-- **多维度分析**：覆盖A股、港股、债券基金、ETF、基金等多个投资品种
-- **智能持仓管理**：根据投资者配置，自动调用对应分析技能
-- **本地数据获取**：可直接获取港股、基金实时行情数据
-- **长期投资导向**：专注于长期稳健复利策略，不鼓励短期炒作
-- **开源可扩展**：模块化设计，方便自定义和扩展
+- **🤖 双模式运行**：既可作为 harness 技能集被 IDE Agent 直读，也可作为独立 CLI Agent 对话
+- **📊 多维度分析**：覆盖 A股、港股、美股、债券、ETF、基金等多个投资品种
+- **🎯 智能持仓管理**：读取 `position.md` 自动调用对应分析技能
+- **🔍 口径可核验**：估值分位/股息率/回撤统一口径标注，回答附「溯源清单」防幻觉
+- **⚖️ 客观中立**：强制空方论点、估值陷阱检查，不给收益承诺
+- **🛠 本地数据获取**：基于 stock-sdk 直接获取多市场实时行情
+- **📈 长期投资导向**：专注长期稳健复利，不鼓励短期炒作
 
-## 适用人群
+## 两种使用方式
 
-- 追求长期稳健收益的个人投资者
-- 无太多时间盯盘的上班族
-- 希望系统化学习投资的小白投资者
+> 按场景选择，可随时切换。两者共享同一套 skill 与数据层，逻辑零分叉。
+
+| | 模式 1 · harness 直读 | 模式 2 · 独立 CLI Agent |
+|---|---|---|
+| **适用** | Trae / Cursor / Codex 等 IDE Agent | 终端独立对话，无需 IDE |
+| **LLM** | 由 harness 提供，无需配置 | 需 `.env` 配置 API key / 模型 |
+| **启动** | 把 `AGENTS.md` 给 Agent 即可 | `bun run main.ts --ask "..."` |
+| **数据** | Agent 调 CLI 取数 | Agent 内置 6 个 tools 取数 |
+| **场景** | 开发环境顺手分析 | 脚本化、多轮 REPL、管道集成 |
+
+**模式 2 用法**：
+
+```bash
+# 单次提问
+bun run main.ts --ask "帮我分析一下招商银行的基本面"
+
+# 多轮对话（REPL，输入 exit 退出）
+bun run main.ts --agent
+```
+
+## 系统架构
+
+```mermaid
+graph TB
+    subgraph Agent["🤖 Agent 层 · 两种使用模式"]
+        direction LR
+        M1["模式 1 · harness 直读<br/>Trae/Cursor/Codex<br/>读 AGENTS.md + skills + position.md"]
+        M2["模式 2 · 独立 CLI<br/>--ask / --agent<br/>LangChain.js + .env LLM"]
+    end
+
+    subgraph Skill["📚 Skill 层 · .agents/"]
+        S1["25 个投资 skill<br/>stock-deep-analysis 等"]
+        S2["3 个 business skill<br/>html-report / report-review<br/>skill-quality-review"]
+        S3["3 个 dev skill<br/>belos-street / bun / grill-me"]
+    end
+
+    subgraph Data["⚙️ CLI 数据层 · src/"]
+        CLI["main.ts<br/>cli / data / agent / format"]
+        SDK["stock-sdk"]
+    end
+
+    Market["东方财富 / 天天基金<br/>A股 · 港股 · 美股 · 基金"]
+
+    M1 -->|"load_skill + 调 CLI"| Skill
+    M2 -->|"6 个 tools + load_skill"| Skill
+    M1 --> Data
+    M2 --> Data
+    CLI --> SDK
+    SDK --> Market
+```
+
+**分层说明**：
+- **Agent 层**：决定「怎么用」——harness 直读 or LangChain.js 对话
+- **Skill 层**：投资方法论（口径纪律、空方论点、估值框架），渐进式加载不爆上下文
+- **CLI 数据层**：`main.ts` → `src/` → stock-sdk，两种模式共享，取实时行情/净值/股息/K线
 
 ## 投资理念
 
@@ -31,217 +85,151 @@ Stock Analytics Skill 是一个基于大语言模型（LLM）的股市投资分�
 风险偏好：中低风险为主，小仓位高弹性进攻，严控回撤
 ```
 
-## Skill 技能一览（25个技能）
+## Skill 技能清单
 
-### 市场分析类
+### 投资分析 skill（25 个 · `.agents/skills/`）
 
-| Skill | 功能 | 适用场景 |
-|-------|------|---------|
-| stock-analytics | 股市行情分析 | 了解整体市场行情、资金流向、热点板块 |
-| hk-stock-analysis | 港股市场 | 分析港股、港股ETF、南向资金 |
-| market-valuation | A股估值判断 | 判断市场高低位、加仓减仓时机 |
+<details><summary>市场分析类（8）</summary>
 
-### ETF投资类
+| Skill | 功能 |
+|-------|------|
+| stock-analytics | 股市行情分析、资金流向、热点板块 |
+| market-valuation | A股估值高低判断、加减仓时机 |
+| macro-data-interpretation | CPI/PPI/PMI/GDP/社融解读 |
+| macro-sector-transmission | 宏观变量→行业传导 |
+| bond-yield-analysis | 债券利率走势、久期策略 |
+| hk-stock-analysis | 港股市场、南向资金、AH 联动 |
+| announcement-analysis | 公告与财报解读 |
+| credit-analysis | 主体信用资质、违约概率评估 |
+</details>
 
-| Skill | 功能 | 适用场景 |
-|-------|------|---------|
-| dividend-low-vol-etf | 红利低波ETF | 分析红利ETF加仓减仓时机 |
-| broad-index-etf-analysis | 宽基ETF | 分析A500、沪深300等宽基指数 |
-| a500-index-investment | A500指数投资 | A500专属PE建仓、倒金字塔加仓、减仓止盈 |
-| cash-flow-etf-analysis | 现金流ETF | 分析现金流ETF、现金流稳定性 |
+<details><summary>ETF / 基金类（8）</summary>
 
-### 基金投资类
+| Skill | 功能 |
+|-------|------|
+| dividend-low-vol-etf | 红利低波 50ETF（515450）加减仓 |
+| broad-index-etf-analysis | 宽基 ETF（A500/沪深300/中证500） |
+| a500-index-investment | A500 专属 PE 建仓、倒金字塔 |
+| cash-flow-etf-analysis | 现金流 ETF、分红稳定性 |
+| bond-fund-analysis | 债券基金、利率影响 |
+| fund-screening | 按风险偏好筛选基金 |
+| fund-comparison | 多只基金对比 |
+| asset-allocation-rebalancing | 资产配置与再平衡 |
+</details>
 
-| Skill | 功能 | 适用场景 |
-|-------|------|---------|
-| fund-screening | 基金筛选 | 根据风险偏好筛选基金 |
-| fund-comparison | 基金对比 | 对比多只基金业绩、风险、持仓 |
+<details><summary>个股 / 估值类（9）</summary>
 
-### 个股分析类
+| Skill | 功能 |
+|-------|------|
+| stock-deep-analysis | 个股深度分析（基本面/估值/财务） |
+| stock-investment-logic | 券商风格个股研究 |
+| valuation-framework | 估值方法与定价框架 |
+| comparable-company-analysis | 可比公司 Comps 分析 |
+| investment-memo | 一页纸投资备忘 |
+| buffett-value-investing | 巴菲特四大原则价值投资 |
+| investment-idea-generator | 量化筛选、主题扫描 |
+| thematic-stock-picker | 按主题选股（AI/新能源等） |
+| growth-stock-screener | 八维成长股筛选 |
+</details>
 
-| Skill | 功能 | 适用场景 |
-|-------|------|---------|
-| stock-deep-analysis | 个股深度分析 | 分析个股基本面、估值、财务数据 |
-| buffett-value-investing | 巴菲特价值投资 | 基于四大原则（能力圈、护城河、安全边际、长期持有）分析个股 |
-| stock-investment-logic | 个股投资逻辑 | 深度研究个股，生成券商风格报告 |
-| investment-memo | 投资备忘录 | 生成一页纸投资摘要 |
-| announcement-analysis | 公告与财报 | 解读公告、年报、季报 |
-| comparable-company-analysis | 可比公司分析 | 估值对标分析、构建Comps表 |
-| valuation-framework | 估值与定价 | 估值方法选择、相对估值分析 |
+### 业务技能（`.agents/business/`）
 
-### 投资发现类
+| Skill | 功能 |
+|-------|------|
+| html-report | HTML 报告生成封装 |
+| report-review | 交付前多维审查 |
+| skill-quality-review | Skill 质量/合规评审 |
 
-| Skill | 功能 | 适用场景 |
-|-------|------|---------|
-| investment-idea-generator | 投资标的筛选 | 量化筛选、主题扫描发现机会 |
-| thematic-stock-picker | 按主题选股 | AI、新能源等主题投资机会 |
-| growth-stock-screener | 八维成长股筛选 | 从创始人、产品力、团队等8个维度筛选成长标的 |
+### 开发技能（`.agents/dev/`）
 
-### 债券与信用类
+| Skill | 功能 |
+|-------|------|
+| belos-street | 编码规范与工程流程 |
+| bun | Bun 运行时 API |
+| grill-me | 需求澄清 |
 
-| Skill | 功能 | 适用场景 |
-|-------|------|---------|
-| bond-fund-analysis | 债券基金 | 分析债券基金、利率影响 |
-| bond-yield-analysis | 债券利率走势 | 利率走势研判、久期策略 |
-| credit-analysis | 信用分析 | 主体信用资质、违约概率评估 |
-
-### 宏观研究类
-
-| Skill | 功能 | 适用场景 |
-|-------|------|---------|
-| macro-data-interpretation | 宏观数据解读 | CPI、PPI、PMI、GDP、社融解读 |
-| macro-sector-transmission | 宏观行业传导 | 宏观变量对行业的影响传导 |
-
-### 资产配置类
-
-| Skill | 功能 | 适用场景 |
-|-------|------|---------|
-| asset-allocation-rebalancing | 资产配置 | 资产配置优化、再平衡时机 |
+> 技能路由：投资问题搜 `skills/`；交付报告搜 `business/`；代码工程搜 `dev/`。详见 `AGENTS.md`。
 
 ## 使用场景
 
-| 场景 | 触发条件 | 调用Skill |
-|------|---------|----------|
-| 市场分析 | 询问A股整体行情、大盘走势 | stock-analytics |
-| 红利ETF | 询问红利低波ETF的行情、加仓时机 | dividend-low-vol-etf |
-| 债券基金 | 询问债券基金、利率影响 | bond-fund-analysis |
-| 港股市场 | 询问港股、恒生医疗/科技ETF | hk-stock-analysis |
-| 宽基ETF | 询问A500、沪深300ETF估值 | broad-index-etf-analysis |
-| A500策略 | 询问A500建仓、PE分位、加仓减仓 | a500-index-investment |
-| 个股分析 | 询问个股基本面、财务、估值 | stock-deep-analysis |
-| 现金流ETF | 询问现金流ETF、投资策略 | cash-flow-etf-analysis |
-| 资产配置 | 询问配置、再平衡、仓位管理 | asset-allocation-rebalancing |
-| 持仓分析 | 询问整体持仓情况、今日表现 | asset-allocation-rebalancing |
-| 市场估值 | 询问A股估值高低、加仓时机 | market-valuation |
-| 投资筛选 | 发现新机会、量化筛选、主题投资 | investment-idea-generator |
-| 基金筛选 | 根据风险偏好筛选基金 | fund-screening |
-| 基金对比 | 对比多只基金业绩、风险 | fund-comparison |
-| 主题选股 | AI、新能源等主题投资机会 | thematic-stock-picker |
-| 八维选股 | 创始人驱动、产品力、团队等8维筛选 | growth-stock-screener |
-| 估值分析 | 估值方法、相对估值分析 | valuation-framework |
-| 个股深度 | 深度研究个股投资逻辑 | stock-investment-logic |
-| 价值投资 | 用巴菲特理念分析个股、评估安全边际 | buffett-value-investing |
-| 可比公司 | 估值对标分析 | comparable-company-analysis |
-| 投资备忘录 | 一页纸投资报告 | investment-memo |
-| 公告财报 | 解读公告、年报、业绩预告 | announcement-analysis |
-| 信用分析 | 信用资质、违约概率评估 | credit-analysis |
-| 债券利率 | 利率走势、久期策略 | bond-yield-analysis |
-| 宏观传导 | 宏观变量对行业的影响 | macro-sector-transmission |
-| 宏观数据 | CPI、PPI、PMI等数据解读 | macro-data-interpretation |
+| 场景 | 触发条件 | 调用 Skill |
+|------|---------|-----------|
+| 市场分析 | A股整体行情、大盘走势 | stock-analytics |
+| 市场估值 | A股估值高低、加仓时机 | market-valuation |
+| 红利 ETF | 红利低波 515450 加减仓 | dividend-low-vol-etf |
+| 宽基 ETF | A500/沪深300 估值 | broad-index-etf-analysis |
+| A500 策略 | A500 建仓、倒金字塔 | a500-index-investment |
+| 现金流 ETF | 现金流 ETF 策略 | cash-flow-etf-analysis |
+| 债券基金 | 债券基金、利率影响 | bond-fund-analysis |
+| 港股 | 港股/恒生医疗科技 ETF | hk-stock-analysis |
+| 个股分析 | 个股基本面、估值 | stock-deep-analysis |
+| 个股深度 | 深度投资逻辑研究 | stock-investment-logic |
+| 价值投资 | 巴菲特理念、安全边际 | buffett-value-investing |
+| 估值分析 | 估值方法、相对估值 | valuation-framework |
+| 可比公司 | 估值对标、Comps | comparable-company-analysis |
+| 投资备忘 | 一页纸报告 | investment-memo |
+| 公告财报 | 公告、年报、业绩预告 | announcement-analysis |
+| 信用分析 | 信用资质、违约概率 | credit-analysis |
+| 债券利率 | 利率走势、久期 | bond-yield-analysis |
+| 宏观数据 | CPI/PMI 等解读 | macro-data-interpretation |
+| 宏观传导 | 宏观→行业传导 | macro-sector-transmission |
+| 投资筛选 | 量化筛选、主题发现 | investment-idea-generator |
+| 主题选股 | AI/新能源等主题 | thematic-stock-picker |
+| 八维选股 | 成长股 8 维筛选 | growth-stock-screener |
+| 基金筛选 | 按风险偏好选基金 | fund-screening |
+| 基金对比 | 多基金对比 | fund-comparison |
+| 资产配置 | 配置、再平衡、仓位 | asset-allocation-rebalancing |
 
 ## 快速开始
 
-### 1. 安装依赖
+### 1. 环境自检与安装
 
 ```bash
-npm install -g bun  # 如果有bun运行时，则跳过
+# 安装 Bun 运行时（已有则跳过）
+curl -fsSL https://bun.sh/install | bash
 bun --version
-```
 
-```bash
+# 安装依赖
 bun install
 ```
 
-### 2. 查询股票/基金数据
-
-```bash
-# 查询港股
-bun run main.ts -s hk00700
-
-# 查询基金
-bun run main.ts -f 320007
-
-# 查询多个标的
-bun run main.ts -s hk00700,hk01810 -f 320007,110022
-```
-
-### 3. 配置持仓
-
-复制 `position.example.md` 为 `position.md`，然后编辑 `position.md` 配置您的持仓信息：
+### 2. 配置持仓
 
 ```bash
 cp position.example.md position.md
+# 编辑 position.md 填入你的持仓标的、目标占比、配置规则
 ```
 
-> `position.md` 包含个人持仓数据，已加入 `.gitignore`，不会被提交到仓库。请放心编辑。
+> `position.md` 是个人持仓配置，已加入 `.gitignore` 不会提交。
 
-### 4. 配置Agent
+### 3. 配置模型（仅模式 2 需要）
 
-编辑 `agents.md` 文件，配置Skill调用规则和场景映射。
-
-## 首次配置说明
-
-### 为什么要配置 position.md 和 agents.md？
-
-本项目采用 **Skill + 配置驱动** 的架构，大模型需要通过这两个文件来理解您的投资情况：
-
-- **`position.md`**：定义您的持仓配置，包括持仓标的、目标占比、配置规则等
-- **`agents.md`**：定义Agent的工作流程，包括各场景对应调用哪个Skill、分析报告生成流程等
-
-### 配置步骤
-
-**第一步：配置持仓信息**
-
-打开 `position.md` 文件，根据您的实际情况修改持仓配置：
-
-```markdown
-| 资产大类 | 具体标的 | 代码 | 查询参数 | 目标占比 | 配置规则 & 备注 |
-| --- | --- | --- | --- | --- | --- |
-| 核心稳健权益类（50%） | 红利低波50ETF | sh515450 | -s | 20% | 股息率过低则逐步减仓... |
+```bash
+cp .env.example .env
+# 编辑 .env 填入 LLM 配置
 ```
 
-主要修改内容：
-- 持仓标的代码
-- 目标占比
-- 个人的配置规则和备注
+`.env` 内容（OpenAI 兼容端点均可）：
 
-**第二步：将 agents.md 丢给大模型**
-
-在开始使用大模型分析之前，需要将 `agents.md` 文件内容**完整复制**并发送给大模型，让大模型理解您的工作流程。
-
-发送方式：
-```
-请加载以下 Agent 配置文件，并按照其中的规则执行任务：
-[复制 agents.md 的完整内容]
-```
-或者将agents.md内容作为system prompt上传至IDE Agent对话框，生成随时可对话的智能体
-```
-设置->智能体->创建->输入智能体名称->agents.md内容粘贴至提示词
+```env
+OPENAI_API_KEY=sk-your-api-key
+OPENAI_BASE_URL=https://api.deepseek.com   # DeepSeek / MoonShot 等
+DEFAULT_MODEL=deepseek-chat                 # 模型名因供应商而异
+# OPENAI_APPEND_V1=false                    # Azure/网关需保留原 URL 时关闭补 /v1
 ```
 
-**第三步：验证配置**
+> 模式 1（harness）无需 `.env`，由 IDE Agent 自带 LLM。
 
-配置完成后，可以尝试让大模型执行一个简单的任务来验证配置是否生效：
+### 4. 冒烟测试
 
+```bash
+bun run main.ts -s sh600519 --pretty   # 返回贵州茅台行情即环境就绪
 ```
-请分析一下我的持仓今天表现怎么样？
-```
 
-大模型应该会：
-1. 自动读取 `position.md` 了解您的持仓
-2. 调用CLI获取各持仓标的数据
-3. 按照 `agents.md` 中的流程进行分析
-4. 给出持仓分析报告
+### 5. 开始使用
 
-### 配置示意图
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     大模型对话窗口                        │
-├─────────────────────────────────────────────────────────┤
-│  用户：今天我的持仓表现怎么样？                            │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │ 大模型读取 agents.md → 了解工作流程               │  │
-│  │ 大模型读取 position.md → 了解持仓配置            │  │
-│  │ 大模型调用 CLI 获取数据 → 各持仓标的价格          │  │
-│  │ 大模型调用对应 Skill → 分析各持仓                 │  │
-│  │ 大模型给出分析报告和建议                          │  │
-│  └──────────────────────────────────────────────────┘  │
-│                                                         │
-│  输出：今日持仓分析报告...                                │
-└─────────────────────────────────────────────────────────┘
-```
+- **模式 1**：把 `AGENTS.md` 交给 IDE Agent（或作为 system prompt），直接对话
+- **模式 2**：`bun run main.ts --ask "今天A股表现怎么样？"` 或 `--agent` 进多轮对话
 
 ## CLI 工具
 
@@ -255,7 +243,7 @@ bun run main.ts [options]
 
 | 参数 | 说明 | 示例 |
 |------|------|------|
-| `-s, --stocks` | A股/ETF/指数代码（逗号分隔，自动识别 sh/sz/hk 前缀） | `-s sh600519,sh600036` |
+| `-s, --stocks` | A股/ETF/指数代码（逗号分隔，自动识别 sh/sz/hk） | `-s sh600519,sh600036` |
 | `-f, --funds` | 基金代码（逗号分隔） | `-f 006493,006961` |
 | `--hk` | 港股代码（逗号分隔） | `--hk 00700,01810` |
 | `--us` | 美股代码（逗号分隔） | `--us AAPL,MSFT` |
@@ -263,14 +251,16 @@ bun run main.ts [options]
 | `--search` | 搜索股票/基金 | `--search 招商银行` |
 | `--kline` | K线数据 | `--kline sh600519` |
 | `--period` | K线周期：daily / weekly / monthly | `--kline sh600519 --period weekly` |
-| `-o, --format` | 输出格式 | `-o json/table/csv` |
-| `--pretty` | 美化JSON输出 | `--pretty` |
+| `-o, --format` | 输出格式：json / table / csv | `-o table` |
+| `--pretty` | 美化 JSON 输出 | `--pretty` |
+| `--ask <question>` | 向 AI 助手提单个问题（模式2） | `--ask "分析招商银行"` |
+| `--agent` | 进入 AI 多轮对话（模式2） | `--agent` |
 
-> stdout 只输出数据本身，标题与提示信息走 stderr，可直接将输出管道给 JSON 解析工具使用。
+> stdout 只输出数据，标题/提示走 stderr，可直接管道给 JSON 解析工具。
 
 ### 输出格式
 
-**JSON 格式**（默认）：
+**JSON**（默认）：
 ```json
 [
   {
@@ -279,16 +269,15 @@ bun run main.ts [options]
     "price": 1212.72,
     "change": -19.28,
     "change_percent": -1.57,
-    "update_time": "2025/06/24"
+    "update_time": "2026/10/21"
   }
 ]
 ```
 
-**Table 格式**：
+**Table**：
 ```
 名称        代码     价格      涨跌    涨跌幅
 贵州茅台    600519   1212.72   -19.28  -1.57%
-招商银行    600036   36.56     -0.55   -1.48%
 ```
 
 ### 支持的市场
@@ -296,129 +285,98 @@ bun run main.ts [options]
 - **A股**：sh600519（贵州茅台）、sh600036（招商银行）等
 - **港股**：00700（腾讯控股）、01810（小米集团）等
 - **美股**：AAPL（苹果）、MSFT（微软）等
-- **基金**：006493（南方中债）、006961（南方中债7-10年）等
+- **基金**：006493、006961（南方中债）等
 - **ETF**：sh515450（红利低波50ETF）等
 
 ## 使用示例
 
-### 示例1：查询股票数据
-```
-$ bun run main.ts -s hk00700
+```bash
+# 查询行情
+bun run main.ts -s sh600941,sh600036 --pretty
 
-=== 获取股票数据 ===
-请求状态: 成功
+# 查询股息率（含 yield_basis 口径标注）
+bun run main.ts --dividend sh600941
 
-1. 腾讯控股 (TENCENT)
-  当前价格: 538
-  涨  跌: +22
-  涨跌幅: +4.264%
-  更新时间: 2026/03/10 11:09
+# AI 助手单次提问（模式2）
+bun run main.ts --ask "用巴菲特理念分析一下贵州茅台"
 ```
 
-### 示例2：市场行情分析
-```
-用户：今天A股市场表现怎么样？
-Agent：调用 stock-analytics Skill，分析今日行情...
-```
-
-### 示例3：持仓综合分析
 ```
 用户：今天我的持仓表现怎么样？
 Agent：
 1. 读取 position.md 了解持仓配置
-2. 使用 CLI 获取各持仓标的数据
-3. 调用各专业Skill分析持仓标的
-4. 调用 asset-allocation-rebalancing 给出建议
-```
-
-### 示例4：个股深度分析
-```
-用户：请分析一下比亚迪的投资价值
-Agent：调用 stock-investment-logic Skill，生成深度研究报告...
-```
-
-### 示例5：基金筛选
-```
-用户：我是平衡型投资者，帮我筛选几只合适的基金
-Agent：调用 fund-screening Skill，根据风险偏好筛选基金...
-```
-
-### 示例6：主题投资
-```
-用户：AI主题有哪些真受益标的？
-Agent：调用 thematic-stock-picker Skill，筛选AI产业链受益股...
-```
-
-### 示例7：宏观数据解读
-```
-用户：最新CPI数据怎么看？
-Agent：调用 macro-data-interpretation Skill，解读通胀数据...
+2. 调 CLI 获取各持仓标的数据
+3. 逐一加载对应 Skill 分析（含空方论点、口径标注）
+4. 调 asset-allocation-rebalancing 给出再平衡建议
+5. 输出报告 + 「📎 本次回答依据」溯源清单
 ```
 
 ## 项目结构
 
 ```
-stock-analytics-skill/
-├── main.ts                 # CLI 入口文件
+stock-analytics-agent/
+├── main.ts                  # 薄入口：解析参数 → 分发
 ├── src/
-│   ├── sdk.ts             # SDK封装层（stock-sdk）
-│   ├── dividend.ts        # 股息率计算
-│   ├── format.ts          # 输出格式化
-│   └── index.ts           # 统一导出
-├── test/
-│   ├── sdk.test.ts        # 测试用例（bun test）
-│   └── test-stock-sdk.ts  # stock-sdk 功能验证脚本
-├── .agents/skills/        # Skill技能目录（25个技能）
-├── position.example.md   # 持仓配置示例模板
-├── agents.md             # Agent配置说明
-├── package.json          # 项目依赖
-└── README.md            # 项目介绍
+│   ├── cli/                 # program/query/render（CLI 编排、渲染、spinner）
+│   ├── data/                # sdk/dividend（数据获取层）
+│   ├── agent/               # config/index/run/skills/tools/position/trace
+│   ├── format.ts            # 输出格式化
+│   ├── types.ts             # 集中类型定义
+│   └── index.ts             # 统一导出
+├── test/                    # bun test 用例
+├── .agents/
+│   ├── skills/              # 25 个投资 skill
+│   ├── business/            # html-report / report-review / skill-quality-review
+│   ├── dev/                 # belos-street / bun / grill-me
+│   ├── rules/               # project_rules / memory
+│   └── memory/decisions.md  # 决策日志
+├── upgrade/v3.0/            # 3.0 升级归档（计划 todo + skills review 报告）
+├── AGENTS.md                # Agent 配置（skill 路由、场景映射）
+├── position.example.md      # 持仓配置模板
+├── .env.example             # LLM 配置模板（模式2）
+├── package.json
+└── README.md
 ```
 
 ## 技术栈
 
 - **运行时**：Bun
 - **CLI 框架**：Commander
-- **数据SDK**：[stock-sdk](https://github.com/chengzuopeng/stock-sdk)
-- **IDE**：Trae IDE、Cursor、Windsurf 等支持 Skill 的开发工具
-- **数据源**：东方财富（股票/基金/港股/美股）
+- **Agent 框架**：LangChain.js 1.0+（模式2）
+- **数据 SDK**：[stock-sdk](https://github.com/chengzuopeng/stock-sdk)
+- **CLI 美化**：ora（loading）+ marked / marked-terminal（彩色 Markdown）
+- **工具链**：oxlint + oxcfmt + bun test + 类型检查
+- **数据源**：东方财富 / 天天基金
 
 ## 致谢
 
 | 项目 | 说明 | 链接 |
 |------|------|------|
-| **stock-sdk** | 零依赖的股票数据SDK，支持84个命名空间方法，V2.0核心依赖 | [GitHub](https://github.com/chengzuopeng/stock-sdk) |
-| **天天基金** | 基金数据源 | [eastmoney.com](https://fund.eastmoney.com/) |
-| **东方财富** | 股票/港股/美股数据源 | [eastmoney.com](https://www.eastmoney.com/) |
-
-特别感谢 [stock-sdk](https://github.com/chengzuopeng/stock-sdk) 作者提供的优秀开源库，使得本项目能够轻松获取A股、港股、美股、基金等多市场数据。
+| **stock-sdk** | 零依赖股票数据 SDK，84 个命名空间方法 | [GitHub](https://github.com/chengzuopeng/stock-sdk) |
+| **LangChain.js** | Agent 框架 | [docs.langchain.com](https://docs.langchain.com) |
+| **天天基金 / 东方财富** | 数据源 | [eastmoney.com](https://www.eastmoney.com/) |
 
 ## 扩展开发
 
-### 添加新的数据源
+**添加新 skill**：
+1. 在 `.agents/skills/` 下建目录，写 `SKILL.md`
+2. 在 `AGENTS.md` 添加场景映射
 
-1. 在 `src/` 目录下创建新的数据模块（参考 `src/dividend.ts`）
-2. 实现数据获取和解析函数
-3. 在 `main.ts` 中添加对应命令参数，并在 `src/index.ts` 中导出
-
-### 添加新的Skill
-
-1. 在 `.agents/skills/` 目录下创建新目录
-2. 编写 `SKILL.md` 文件，定义技能说明
-3. 在 `agents.md` 中添加场景映射
+**添加新数据源**：
+1. 在 `src/data/` 建模块（参考 `sdk.ts`）
+2. 在 `src/cli/program.ts` 加参数，`src/index.ts` 导出
 
 ## 注意事项
 
 ⚠️ **法律声明**
-- 本项目仅供个人学习和技术研究使用，禁止用于任何商业目的
-- 数据来源为公开的第三方接口（东方财富、天天基金），数据归属权归各平台所有
-- 本项目不存储任何用户数据，不涉及账户登录和信息采集
-- 如有任何问题或侵权内容，请联系删除
+- 仅供个人学习和技术研究，禁止商业用途
+- 数据来自公开第三方接口，归属权归各平台所有
+- 不存储用户数据，不涉及账户登录
 
 ⚠️ **风险提示**
-- 本项目仅供学习和参考，不构成投资建议
+- 仅供学习参考，**不构成投资建议**
 - 投资有风险，入市需谨慎
-- 请根据自身情况做出投资决策
+- 回答附「溯源清单」供核验，量化口径以文档标注为准
 
 ## 许可证
 
