@@ -1,6 +1,6 @@
 {
   "name": "stock-analytics-skill",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "bin": {
     "stock-analytics": "./main.ts"
   },
