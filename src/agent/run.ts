@@ -9,7 +9,16 @@
  */
 
 import { createInterface, type Interface } from 'readline'
-import { createInvestAgent } from './index'
+import { mkdirSync, writeFileSync } from 'fs'
+import { dirname } from 'path'
+import {
+  createInvestAgent,
+  renderRulesBrief,
+  renderRuntimeContext,
+  resetToolRuntime
+} from './index'
+import { checkCompliance } from './compliance'
+import { loadPositionBrief } from './position'
 import { describeToolCall, renderTrace, type ToolCallRecord } from './trace'
 import {
   renderMarkdown,
@@ -76,6 +85,9 @@ async function runWithProgress(
   agent: AgentLike,
   messages: Array<{ role: 'user' | 'assistant'; content: string }>
 ): Promise<{ answer: string; calls: ToolCallRecord[] }> {
+  // 每轮重置工具预算与同参 memo：生命周期 = 单次 askOnce / 单轮 REPL
+  resetToolRuntime()
+
   const calls: ToolCallRecord[] = []
   let answer = ''
 
@@ -140,23 +152,94 @@ async function runWithProgress(
   return { answer, calls }
 }
 
-/** 运行一次单次问答 */
-export async function askOnce(question: string): Promise<string> {
-  const agent = createInvestAgent()
-  const { answer, calls } = await runWithProgress(agent, [
+/** 合规命中后让模型重写一次；请求失败时保留原文 */
+async function rewriteForCompliance(
+  agent: AgentLike,
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+  answer: string,
+  terms: string[]
+): Promise<string> {
+  const instruction = `请重写上一条回答，删除或改写以下违规表述：${terms.join('、')}。要求：不得出现收益承诺、概率承诺、保本表述、精确买卖点；保留数据、来源与时点。只输出重写后的回答。`
+  try {
+    const result = await agent.invoke({
+      messages: [
+        ...messages,
+        { role: 'assistant', content: answer },
+        { role: 'user', content: instruction }
+      ]
+    })
+    return extractText(result as AgentResultLike) || answer
+  } catch {
+    return answer
+  }
+}
+
+/** 写入报告并运行结构检查；所有提示走 stderr，保持 stdout 只有回答 */
+function saveReport(out: string, content: string): void {
+  mkdirSync(dirname(out), { recursive: true })
+  writeFileSync(out, content.endsWith('\n') ? content : `${content}\n`, 'utf-8')
+  console.error(`报告已写入：${out}`)
+  const proc = Bun.spawnSync(
+    [
+      'bun',
+      'run',
+      '.agents/business/report-review/scripts/check-report.ts',
+      out
+    ],
+    { stdout: 'pipe', stderr: 'pipe' }
+  )
+  const text = `${proc.stdout.toString()}${proc.stderr.toString()}`.trim()
+  if (text) console.error(text)
+  if (proc.exitCode !== 0) {
+    console.error('check-report 未通过，请按上方问题修正报告')
+  }
+  console.error(
+    '提示：交付前请运行 report-review 审查（.agents/business/report-review/SKILL.md）'
+  )
+}
+
+/** 运行一次单次问答；out 非空时把最终回答写入 markdown 并做结构检查 */
+export async function askOnce(question: string, out?: string): Promise<string> {
+  const agent = createInvestAgent(await renderRuntimeContext())
+  const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
     { role: 'user', content: question }
-  ])
+  ]
+  const { answer: raw, calls } = await runWithProgress(agent, messages)
+  let answer = raw
+  let revised = false
+
+  const lint = checkCompliance(answer)
+  if (lint.hit) {
+    const original = answer
+    answer = await rewriteForCompliance(agent, messages, answer, lint.terms)
+    const again = checkCompliance(answer)
+    if (again.hit) {
+      answer = original
+      console.error(
+        `合规警告：回答仍含 ${again.terms.join('、')}，已保留原文，请人工复核`
+      )
+    } else {
+      revised = true
+    }
+  }
+
+  if (out) saveReport(out, answer)
+
   // 非 TTY（管道/脚本）：runWithProgress 未流式，此处一次性渲染成品 + 溯源
-  // TTY：块流式已写 stdout，直接返回空串避免双份输出
-  if (process.stdout.isTTY === true) return ''
+  // TTY：块流式已写 stdout；若合规重写则补打修订版，避免用户只看到原回答
+  if (process.stdout.isTTY === true) {
+    if (revised) console.log(`\n[合规修订]\n${renderMarkdown(answer)}`)
+    return ''
+  }
   const trace = renderTrace(calls)
   return trace ? `${renderMarkdown(answer)}\n${trace}` : renderMarkdown(answer)
 }
 
 /** 交互式多轮对话（REPL） */
 export async function chatLoop(): Promise<void> {
-  const agent = createInvestAgent()
-  console.error('投资分析 Agent 已启动（输入 exit / quit 退出）\n')
+  console.error(
+    '投资分析 Agent 已启动（/reload 重载持仓与口径，exit / quit 退出）\n'
+  )
 
   // 多轮对话历史
   const history: Array<{ role: 'user' | 'assistant'; content: string }> = []
@@ -175,10 +258,21 @@ export async function chatLoop(): Promise<void> {
       const question = await prompt(rl, '你 > ')
       if (!question) continue
       const trimmed = question.trim()
+      if (trimmed === '/reload') {
+        // 每轮重建 agent 已自动重读；这里显式读取并回显，方便确认文件已生效
+        const pos = loadPositionBrief()
+        const rules = renderRulesBrief()
+        console.error(
+          `已重新加载：position.md ${pos.length} 字符、agent_brief.md ${rules.length} 字符；下一轮生效`
+        )
+        continue
+      }
       if (['exit', 'quit', 'q'].includes(trimmed.toLowerCase())) break
 
       history.push({ role: 'user', content: trimmed })
       try {
+        // 每轮重建 agent：运行时上下文（日期/交易日）随轮次更新
+        const agent = createInvestAgent(await renderRuntimeContext())
         // 对话循环需逐轮顺序处理（上一轮回答进入下一轮上下文），await-in-loop 是设计必然
         // eslint-disable-next-line no-await-in-loop
         const { answer, calls } = await runWithProgress(agent, history)

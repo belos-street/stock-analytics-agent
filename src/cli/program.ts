@@ -19,6 +19,7 @@ export interface CliOptions {
   pretty: boolean
   agent: boolean
   ask: string
+  out: string
 }
 
 /** 构建并解析 CLI program，返回类型化选项 */
@@ -45,6 +46,7 @@ export function buildProgram(): CliOptions {
     .option('--pretty', 'JSON美化输出', false)
     .option('--agent', '进入 AI 投资分析对话（需配置 .env 的 LLM 密钥）')
     .option('--ask <question>', '向 AI 投资分析助手提单个问题')
+    .option('--out <path>', '将 --ask 的最终回答写入 markdown 文件', '')
     .parse(process.argv)
 
   return program.opts<CliOptions>()

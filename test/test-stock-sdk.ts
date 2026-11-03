@@ -7,7 +7,7 @@
 
 import { StockSDK } from 'stock-sdk'
 import { execSync } from 'child_process'
-import type { RawStockQuote } from '../src/types'
+import type { StockQuote } from '../src/types'
 
 const sdk = new StockSDK()
 
@@ -150,7 +150,7 @@ async function main() {
     }
 
     // 获取当前股价（使用CLI）
-    const quotes = execCLI<RawStockQuote[]>('quote sh600941 --format json -q')
+    const quotes = execCLI<StockQuote[]>('quote sh600941 --format json -q')
     if (!quotes || quotes.length === 0) {
       throw new Error('未获取到行情数据')
     }
@@ -174,7 +174,7 @@ async function main() {
       throw new Error('未获取到分红数据')
     }
 
-    const quotes = execCLI<RawStockQuote[]>('quote sh600036 --format json -q')
+    const quotes = execCLI<StockQuote[]>('quote sh600036 --format json -q')
     if (!quotes || quotes.length === 0) {
       throw new Error('未获取到行情数据')
     }
