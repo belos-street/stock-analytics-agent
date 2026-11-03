@@ -1,6 +1,7 @@
 # Agent 口径与红线（模式 2 运行时精简版）
 
 > 本文件是模式 2 的读取白名单之一（D21），只沉淀口径与红线，不写工程决策。
+> 另：`watchlist/` 下的 md/html 可经 `read_watchlist` 只读（D22），不得扩展到其他目录。
 > 与 `.agents/memory/decisions.md` 的 D9-D11 对齐；口径冲突时以本文件为准。
 
 ## 1. 估值分位

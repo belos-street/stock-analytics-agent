@@ -157,22 +157,34 @@ export interface WebSearchItem {
   source: string
 }
 
-/** 清洗网页片段：去标签、压缩空白、截断到 500 字，降低注入面 */
-function cleanText(raw: unknown): string {
+/** 清洗网页片段：去标签、压缩空白、截断，降低注入面 */
+function cleanText(raw: unknown, max = 500): string {
   return String(raw ?? '')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, 500)
+    .slice(0, max)
 }
 
 /** 是否已配置搜索能力（tool 层据此返回 SEARCH_NOT_CONFIGURED） */
 export function isSearchConfigured(): boolean {
+  const provider = (process.env.SEARCH_PROVIDER ?? 'tavily').toLowerCase()
+  if (provider === 'deepseek') {
+    // DeepSeek Search API 与 LLM 共用同一把 key，无需再单独申请
+    return Boolean(process.env.SEARCH_API_KEY || process.env.OPENAI_API_KEY)
+  }
   return Boolean(process.env.SEARCH_API_KEY)
 }
 
+/** DeepSeek 搜索端点：默认官方地址，兼容已带 /v1 的配置 */
+function deepseekSearchURL(): string {
+  const raw = (process.env.SEARCH_BASE_URL ?? 'https://api.deepseek.com').trim()
+  return `${raw.replace(/\/+$/, '').replace(/\/v\d+$/i, '')}/v1/tools/search`
+}
+
 /**
- * web_search：tavily / serper / bing，由 SEARCH_PROVIDER + SEARCH_API_KEY 配置。
+ * web_search：deepseek / tavily / serper / bing。
+ * deepseek 复用 OPENAI_API_KEY（可用 SEARCH_API_KEY 覆盖）；其余 provider 需 SEARCH_API_KEY。
  * 无 key 抛 SEARCH_NOT_CONFIGURED；HTTP 失败抛错，由工具层转 UPSTREAM_ERROR。
  */
 export async function searchWeb(
@@ -181,7 +193,6 @@ export async function searchWeb(
 ): Promise<WebSearchItem[]> {
   const provider = (process.env.SEARCH_PROVIDER ?? 'tavily').toLowerCase()
   const key = process.env.SEARCH_API_KEY
-  if (!key) throw new Error('SEARCH_NOT_CONFIGURED')
   const n = Math.min(Math.max(maxResults, 1), 10)
   const timeout = AbortSignal.timeout(8000)
   const map = (
@@ -190,17 +201,54 @@ export async function searchWeb(
       url?: unknown
       snippet?: unknown
       date?: unknown
-    }[]
+    }[],
+    snippetMax = 500
   ): WebSearchItem[] =>
     rows
       .filter((r) => r.url)
       .map((r) => ({
         title: cleanText(r.title),
         url: String(r.url),
-        snippet: cleanText(r.snippet),
+        snippet: cleanText(r.snippet, snippetMax),
         publishedAt: r.date ? String(r.date) : null,
         source: provider
       }))
+
+  if (provider === 'deepseek') {
+    const dkey = key ?? process.env.OPENAI_API_KEY
+    if (!dkey) throw new Error('SEARCH_NOT_CONFIGURED')
+    const res = await fetch(deepseekSearchURL(), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${dkey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query, count: n, need_content: false }),
+      signal: timeout
+    })
+    if (!res.ok) throw new Error(`deepseek-search ${res.status}`)
+    const json = (await res.json()) as {
+      results?: {
+        title?: string
+        url?: string
+        snippet?: string
+        summary?: string
+        date?: string | null
+      }[]
+    }
+    // summary（600-800 字）面向模型阅读，优先于 snippet（100-200 字）
+    return map(
+      (json.results ?? []).map((r) => ({
+        title: r.title,
+        url: r.url,
+        snippet: r.summary || r.snippet,
+        date: r.date
+      })),
+      800
+    )
+  }
+
+  if (!key) throw new Error('SEARCH_NOT_CONFIGURED')
 
   if (provider === 'serper') {
     const res = await fetch('https://google.serper.dev/search', {

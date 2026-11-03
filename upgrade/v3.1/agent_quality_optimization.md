@@ -230,6 +230,8 @@ v3.1.2 补齐了“数据”（FullQuote / 市场总览 / 持仓快照）和“�
 
 ## 3. 目标工具集（10 个，冻结）
 
+> 2026-11-03 例外（D22）：新增 `read_watchlist` 读取 `watchlist/` 历史调查，工具总数 11；其余冻结约束不变。
+
 | # | 工具 | 状态 | 说明 |
 | --- | --- | --- | --- |
 | 1 | `get_stock_quote` | 改造 | 替换实现为 FullQuote，不新增别名 |
@@ -242,6 +244,7 @@ v3.1.2 补齐了“数据”（FullQuote / 市场总览 / 持仓快照）和“�
 | 8 | `get_portfolio_snapshot` | 新增 | position 解析 + 金额 / 占比 / 超限 / **drift**，不编造盈亏 |
 | 9 | `web_search` | 新增 | 新闻 / 公告 / 政策，返回 URL + 日期 |
 | 10 | `compute_series_stats` | 新增 | 1-3 个标的：区间收益 / 回撤 / 波动 / 两两相关与 beta / 价格分位 |
+| 11 | `read_watchlist` | 新增（D22） | 列出 / 读取 `watchlist/` 下 md/html；只读、限目录内 |
 
 不新增 `write_report` 工具：报告用 `--out` 输出，避免给模型开放任意写文件权限。
 
@@ -249,8 +252,8 @@ v3.1.2 补齐了“数据”（FullQuote / 市场总览 / 持仓快照）和“�
 
 - 单轮工具调用 ≤8 次（代码强制，不只是提示词约定）。
 - 新增工具必须写清 `description`、参数、单位、来源、as-of。
-- **工具总数到 10 冻结**；再加必须先删一个，且删减理由写入决策日志。
-- **读取白名单**：不开放通用 `read_file`；文件读取只允许 `position.md`、`.agents/skills/`、`.agents/rules/agent_brief.md`。`.agents/memory/` 属编码侧工程记忆，模式 2 禁止读取（见 D21）。
+- **工具总数到 10 冻结**（D22 例外：11）；再加必须先删一个，且删减理由写入决策日志。
+- **读取白名单**：不开放通用 `read_file`；文件读取只允许 `position.md`、`.agents/skills/`、`.agents/rules/agent_brief.md`，以及 `watchlist/` 下的 md/html（D22 例外）。`.agents/memory/` 属编码侧工程记忆，模式 2 禁止读取（见 D21）。
 
 ---
 
@@ -512,7 +515,7 @@ v3.1.2 补齐了“数据”（FullQuote / 市场总览 / 持仓快照）和“�
 
 #### 3-1 `web_search`
 
-- Provider 可配：`SEARCH_PROVIDER`（tavily / serper / bing），`SEARCH_API_KEY`。
+- Provider 可配：`SEARCH_PROVIDER`（deepseek / tavily / serper），`SEARCH_API_KEY`；`deepseek` 复用 `OPENAI_API_KEY`（与 LLM 同一把 key），可配 `SEARCH_BASE_URL`。
 - 无 key 时明确提示“当前无搜索能力”，不假装能搜。
 - 返回：`title / url / snippet / publishedAt / source`。
 - 简单注入防护：
@@ -580,7 +583,7 @@ v3.1.2 补齐了“数据”（FullQuote / 市场总览 / 持仓快照）和“�
 | 合规红线 | 0 | 禁词表 |
 | 持仓热加载 | 修改后下一轮生效 | 手工验证 |
 | 报告落盘 | 1 份日报通过 `check-report.ts` + review 提示 | 命令验证 |
-| 工具总数 | 10（冻结） | 代码检查 |
+| 工具总数 | 11（原冻结 10 + D22 例外） | 代码检查 |
 | p95 延迟 | ≤基线 ×1.2 | 10 题计时 |
 | 代码净增 | ≤450 行（上限 550） | `wc -l` |
 | 基线差距 | 10 题分数提升，且能归因 | 人工评分表 |
@@ -613,7 +616,7 @@ v3.1.2 补齐了“数据”（FullQuote / 市场总览 / 持仓快照）和“�
 | 文件 | 作用 |
 | --- | --- |
 | `src/agent/index.ts` | agent 骨架 + system prompt + 模型 |
-| `src/agent/tools.ts` | 10 个工具 |
+| `src/agent/tools.ts` | 11 个工具 |
 | `src/agent/run.ts` | 单次问答 + REPL + 流式 |
 | `src/agent/skills.ts` | skill 目录 + 全文加载 |
 | `src/agent/position.ts` | position.md 注入 |
@@ -698,6 +701,8 @@ bun run main.ts --ask "紫金矿业和黄金ETF这两年谁更强，相关性多
 - D19 · K 线统一前复权口径，`adjust: "qfq"` 随输出返回；价格分位不得表述为估值分位
 - D20 · 工具总数到 10 冻结；`market_overview` v1 缩范围，用省下的复杂度换计算层
 - D21 · 模式 2 只读 `position.md` + `.agents/skills/` + `.agents/rules/agent_brief.md`；**不读 `.agents/memory/`**，工程记忆与投顾上下文隔离；不开放通用 `read_file`
+- D22 · 2026-11-03 例外：新增 `read_watchlist`（工具总数 11），仅只读 `watchlist/` 下 md/html；D21 的通用 `read_file` 禁令不变
+- D23 · 2026-11-04 搜索默认走 DeepSeek Search API（`POST /v1/tools/search`），复用 `OPENAI_API_KEY`，不引入第三方搜索 key；Responses API 的内置 `web_search` 仅 `deepseek-v4-pro` 支持，本项目的 chat-completions + LangChain agent 不切换
 
 ---
 

@@ -33,7 +33,7 @@ Stock Analytics Agent 是一个基于大语言模型（LLM）的股市投资分�
 | **适用** | Trae / Cursor / Codex 等 IDE Agent | 终端独立对话，无需 IDE |
 | **LLM** | 由 harness 提供，无需配置 | 需 `.env` 配置 API key / 模型 |
 | **启动** | 把 `AGENTS.md` 给 Agent 即可 | `bun run main.ts --ask "..."` |
-| **数据** | Agent 调 CLI 取数 | Agent 内置 10 个 tools 取数 |
+| **数据** | Agent 调 CLI 取数 | Agent 内置 11 个 tools 取数 |
 | **场景** | 开发环境顺手分析 | 脚本化、多轮 REPL、管道集成 |
 
 **模式 2 用法**：
@@ -74,7 +74,7 @@ graph TB
     Market["东方财富 / 天天基金<br/>A股 · 港股 · 美股 · 基金"]
 
     M1 -->|"load_skill + 调 CLI"| Skill
-    M2 -->|"10 个 tools + load_skill"| Skill
+    M2 -->|"11 个 tools + load_skill"| Skill
     M1 --> Data
     M2 --> Data
     CLI --> STATS
@@ -87,7 +87,7 @@ graph TB
 - **Skill 层**：投资方法论（口径纪律、空方论点、估值框架），渐进式加载不爆上下文
 - **数据层**：`main.ts` → `src/` → 行情/基金/K线/股息，两种模式共享；计算层负责收益、回撤、波动与相关性
 
-## Agent 工具（10 个）
+## Agent 工具（11 个）
 
 | 工具 | 用途 |
 |---|---|
@@ -99,8 +99,9 @@ graph TB
 | `load_skill` | 加载投资方法论全文（路径白名单） |
 | `get_market_overview` | 5 个核心指数 + 两市成交额；缺失项显式声明 |
 | `get_portfolio_snapshot` | 持仓金额/占比/drift/上限；仅份额与成本齐全时算盈亏 |
+| `read_watchlist` | 列出/读取 `watchlist/` 历史调查（只读，限目录内 md/html） |
 | `compute_series_stats` | 区间收益/回撤/波动/corr/beta/价格分位 |
-| `web_search` | 新闻/公告/政策（需 `SEARCH_API_KEY`，无 key 明确报错） |
+| `web_search` | 新闻/公告/政策（`SEARCH_PROVIDER=deepseek` 复用 LLM key；其他 provider 需 `SEARCH_API_KEY`） |
 
 > 所有工具返回统一信封 `{ ok, data, meta }`，`meta` 带 `source / asOf / unit`；失败返回 `{ ok: false, error }`，不抛异常、不编造缺失字段。
 

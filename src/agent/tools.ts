@@ -14,6 +14,7 @@ import { loadSkillTool } from './tools/skill'
 import { computeSeriesStatsTool } from './tools/analytics'
 import { getMarketOverview } from './tools/market'
 import { getPortfolioSnapshot } from './tools/portfolio'
+import { readWatchlistTool } from './tools/watchlist'
 import { webSearchTool } from './tools/web'
 
 export { governTool, resetToolRuntime } from './tools/runtime'
@@ -28,6 +29,7 @@ export {
   computeSeriesStatsTool,
   getMarketOverview,
   getPortfolioSnapshot,
+  readWatchlistTool,
   webSearchTool
 }
 
@@ -42,5 +44,6 @@ export const agentTools = [
   computeSeriesStatsTool,
   getMarketOverview,
   getPortfolioSnapshot,
+  readWatchlistTool,
   webSearchTool
 ]

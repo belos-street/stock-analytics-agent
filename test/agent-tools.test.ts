@@ -5,14 +5,20 @@ import {
   getStockQuote,
   governTool,
   loadSkillTool,
+  readWatchlistTool,
   resetToolRuntime,
   webSearchTool
 } from '../src/agent/tools'
+import {
+  isSafeDocName,
+  listWatchlistDocs,
+  readWatchlistDoc
+} from '../src/agent/tools/watchlist'
 import { buildKlineWindow } from '../src/data/stats'
 import { fail, isoFromQuoteTime, localISO, ok } from '../src/agent/envelope'
 import { parsePositionHoldings } from '../src/agent/position'
 import { checkCompliance } from '../src/agent/compliance'
-import { normalizeUsCode } from '../src/data/sdk'
+import { isSearchConfigured, normalizeUsCode, searchWeb } from '../src/data/sdk'
 import type { KlineBar } from '../src/types'
 
 /** 300 根等值 bar，仅用于验证窗口截断 */
@@ -178,9 +184,27 @@ describe('agent 工具调用治理', () => {
   })
 
   test('12. 搜索未配置：SEARCH_NOT_CONFIGURED，不假装能搜', async () => {
-    const r = JSON.parse(await webSearchTool.invoke({ query: '中国移动 政策' }))
-    expect(r.ok).toBe(false)
-    expect(r.error.code).toBe('SEARCH_NOT_CONFIGURED')
+    const savedKey = process.env.SEARCH_API_KEY
+    const savedLlm = process.env.OPENAI_API_KEY
+    const savedProvider = process.env.SEARCH_PROVIDER
+    delete process.env.SEARCH_API_KEY
+    delete process.env.OPENAI_API_KEY
+    process.env.SEARCH_PROVIDER = 'tavily'
+    try {
+      const r = JSON.parse(
+        await webSearchTool.invoke({ query: '中国移动 政策' })
+      )
+      expect(r.ok).toBe(false)
+      expect(r.error.code).toBe('SEARCH_NOT_CONFIGURED')
+    } finally {
+      if (savedKey !== undefined) process.env.SEARCH_API_KEY = savedKey
+      if (savedLlm !== undefined) process.env.OPENAI_API_KEY = savedLlm
+      if (savedProvider !== undefined) {
+        process.env.SEARCH_PROVIDER = savedProvider
+      } else {
+        delete process.env.SEARCH_PROVIDER
+      }
+    }
   })
 
   test('13. 合规 lint：概率承诺命中，正常引用 / 否定句不误伤', () => {
@@ -188,5 +212,99 @@ describe('agent 工具调用治理', () => {
     expect(checkCompliance('年报披露的股息率为 3%').hit).toBe(false)
     expect(checkCompliance('债基并非无风险').hit).toBe(false)
     expect(checkCompliance('无风险利率').hit).toBe(false)
+  })
+
+  test('14. watchlist 只读：白名单、列目录、路径穿越拒绝', async () => {
+    expect(isSafeDocName('风险观察.md')).toBe(true)
+    expect(isSafeDocName('观察.html')).toBe(true)
+    expect(isSafeDocName('观察.txt')).toBe(false)
+    expect(isSafeDocName('../position.md')).toBe(false)
+    expect(isSafeDocName('sub/report.md')).toBe(false)
+
+    const docs = listWatchlistDocs()
+    for (const d of docs) {
+      expect(d.name).toMatch(/\.(md|html)$/i)
+      expect(d.bytes).toBeGreaterThan(0)
+    }
+    if (docs.length > 0) {
+      const doc = readWatchlistDoc(docs[0].name)
+      expect(doc?.content.length).toBeGreaterThan(0)
+      expect(typeof doc?.truncated).toBe('boolean')
+    }
+
+    const crossed = JSON.parse(
+      await readWatchlistTool.invoke({ name: '../position.md' })
+    )
+    expect(crossed.error.code).toBe('PATH_NOT_ALLOWED')
+
+    const missing = JSON.parse(
+      await readWatchlistTool.invoke({ name: 'not-exist.md' })
+    )
+    expect(missing.error.code).toBe('DOC_NOT_FOUND')
+
+    const listed = JSON.parse(await readWatchlistTool.invoke({}))
+    expect(listed.ok).toBe(docs.length > 0)
+  })
+
+  test('15. DeepSeek 搜索：复用 LLM key、summary 优先、丢无 url 条目', async () => {
+    const savedProvider = process.env.SEARCH_PROVIDER
+    const savedLlm = process.env.OPENAI_API_KEY
+    const savedFetch = globalThis.fetch
+    process.env.SEARCH_PROVIDER = 'deepseek'
+    process.env.OPENAI_API_KEY = 'test-key'
+    let captured: { url: string; init?: RequestInit } = { url: '' }
+    globalThis.fetch = (async (
+      url: string | URL | Request,
+      init?: RequestInit
+    ) => {
+      captured = { url: String(url), init }
+      return new Response(
+        JSON.stringify({
+          results: [
+            {
+              title: '<b>政策</b> 标题',
+              url: 'https://example.com/a',
+              snippet: '短摘要',
+              summary: '长摘要，面向模型阅读',
+              date: '2026-11-01T00:00:00+00:00'
+            },
+            { title: '无链接条目', snippet: '应被过滤' }
+          ]
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    }) as unknown as typeof fetch
+    try {
+      expect(isSearchConfigured()).toBe(true)
+      const items = await searchWeb('中国移动 政策', 3)
+      expect(items).toHaveLength(1)
+      expect(items[0]).toMatchObject({
+        title: '政策 标题',
+        url: 'https://example.com/a',
+        snippet: '长摘要，面向模型阅读',
+        publishedAt: '2026-11-01T00:00:00+00:00',
+        source: 'deepseek'
+      })
+      expect(captured.url).toBe('https://api.deepseek.com/v1/tools/search')
+      const headers = captured.init?.headers as Record<string, string>
+      expect(headers.Authorization).toBe('Bearer test-key')
+      expect(JSON.parse(String(captured.init?.body))).toEqual({
+        query: '中国移动 政策',
+        count: 3,
+        need_content: false
+      })
+    } finally {
+      globalThis.fetch = savedFetch
+      if (savedLlm !== undefined) {
+        process.env.OPENAI_API_KEY = savedLlm
+      } else {
+        delete process.env.OPENAI_API_KEY
+      }
+      if (savedProvider !== undefined) {
+        process.env.SEARCH_PROVIDER = savedProvider
+      } else {
+        delete process.env.SEARCH_PROVIDER
+      }
+    }
   })
 })

@@ -70,3 +70,16 @@
 - **理由**：这些事实此前在 skill 中写错（曲线释义反向、REITs 收入口径、价位表、信贷频率），会直接误导做陡做平/分红测算/下单
 - **日期**：2026-10-20
 - **来源**：`upgrade/v3.0/skills_review.md` P0-a 事实硬伤（外部事实已回主源核验）
+
+## D22 · 模式 2 开放 `watchlist/` 只读（D21 例外）
+
+- **结论**：新增第 11 个工具 `read_watchlist`，不传 `name` 返回 `watchlist/` 文件清单（名称/大小/修改时间），传 `name` 返回正文（上限 30000 字，超出标 `truncated`）。仅允许 `watchlist/` 下的 `.md` / `.html`，拒绝路径分隔符与 `..`；`asOf` 取文件 mtime（`asOfKind: fileMtime`）
+- **理由**：模式 2 无法读取历史调查记录，做“watchlist 调查报告”类任务时只能拒绝或编造；D21 的通用 `read_file` 禁令不变，仅扩这一条只读白名单
+- **日期**：2026-11-03
+- **备注**：编号沿用 `upgrade/v3.1/agent_quality_optimization.md` 的 D 序号（D12–D21 记于该文档）
+
+## D23 · 搜索默认走 DeepSeek Search API
+
+- **结论**：`web_search` 新增 `deepseek` provider，端点 `POST https://api.deepseek.com/v1/tools/search`，鉴权复用 `OPENAI_API_KEY`（可用 `SEARCH_API_KEY` 覆盖），`SEARCH_BASE_URL` 可改端点；响应优先取 `summary`（600-800 字，面向模型）而非 `snippet`（100-200 字），`need_content=false`
+- **理由**：DeepSeek 已提供官方 Search/Fetch API，与 LLM 同一把 key，不必再申请 Tavily/Serper；按成功请求计费 $0.75/千次，空结果与失败不计费。Responses API 的内置 `web_search` 仅 `deepseek-v4-pro` 支持且本项目用 chat-completions + LangChain agent，故走独立 Search API 而非切换协议
+- **日期**：2026-11-04
