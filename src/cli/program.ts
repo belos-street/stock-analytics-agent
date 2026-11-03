@@ -28,8 +28,8 @@ export function buildProgram(): CliOptions {
 
   program
     .name('stock-analytics')
-    .description('股市投资分析助手 V3.0 - 基于 stock-sdk')
-    .version('3.0.1')
+    .description('股市投资分析助手 V3.1')
+    .version('3.1.0')
     .option(
       '-s, --stocks <codes>',
       'A股/ETF/指数代码列表（逗号分隔，sh/sz前缀可省略）',

@@ -1,10 +1,12 @@
 # Stock Analytics Agent - 股市投资分析助手
 
-> 🚀 **V3.0 升级** - 2026年10月
+> 🚀 **V3.1 升级** - 2026年11月
+> - **数据地基**：FullQuote（PE/PB/52 周/换手/量比）+ 市场总览 + 持仓快照
+> - **计算层**：区间收益 / 回撤 / 波动 / 相关性 / beta 由工具计算，不靠心算
+> - **调用治理**：单轮 ≤8 次、同参去重、递归上限
+> - **报告输出**：`--out` 落盘 + 结构检查 + 合规词表
 > - **双模式**：harness 直读（模式1）+ LangChain.js 独立 CLI Agent（模式2）
-> - **LLM 可配置**：`.env` 一键切换模型（DeepSeek / MoonShot 等 OpenAI 兼容端点）
-> - **25 个投资 skill** + business/dev 技能，口径统一、可核验、含空方论点
-> - **CLI 美化**：流式输出、彩色 Markdown、实时进度、回答溯源清单
+> - **25 个投资 skill**，口径统一、可核验、含空方论点
 
 ## 项目简介
 
@@ -15,9 +17,11 @@ Stock Analytics Agent 是一个基于大语言模型（LLM）的股市投资分�
 - **🤖 双模式运行**：既可作为 harness 技能集被 IDE Agent 直读，也可作为独立 CLI Agent 对话
 - **📊 多维度分析**：覆盖 A股、港股、美股、债券、ETF、基金等多个投资品种
 - **🎯 智能持仓管理**：读取 `position.md` 自动调用对应分析技能
+- **🧮 计算层**：收益、回撤、波动、相关性与 beta 由工具计算，回答不靠心算
 - **🔍 口径可核验**：估值分位/股息率/回撤统一口径标注，回答附「溯源清单」防幻觉
 - **⚖️ 客观中立**：强制空方论点、估值陷阱检查，不给收益承诺
-- **🛠 本地数据获取**：基于 stock-sdk 直接获取多市场实时行情
+- **🛠 本地数据获取**：A股/港股/美股/基金实时行情、净值、股息与 K 线
+- **📤 报告输出**：`--out` 写入 Markdown，自动做结构检查并提示交付审查
 - **📈 长期投资导向**：专注长期稳健复利，不鼓励短期炒作
 
 ## 两种使用方式
@@ -29,7 +33,7 @@ Stock Analytics Agent 是一个基于大语言模型（LLM）的股市投资分�
 | **适用** | Trae / Cursor / Codex 等 IDE Agent | 终端独立对话，无需 IDE |
 | **LLM** | 由 harness 提供，无需配置 | 需 `.env` 配置 API key / 模型 |
 | **启动** | 把 `AGENTS.md` 给 Agent 即可 | `bun run main.ts --ask "..."` |
-| **数据** | Agent 调 CLI 取数 | Agent 内置 6 个 tools 取数 |
+| **数据** | Agent 调 CLI 取数 | Agent 内置 10 个 tools 取数 |
 | **场景** | 开发环境顺手分析 | 脚本化、多轮 REPL、管道集成 |
 
 **模式 2 用法**：
@@ -37,6 +41,9 @@ Stock Analytics Agent 是一个基于大语言模型（LLM）的股市投资分�
 ```bash
 # 单次提问
 bun run main.ts --ask "帮我分析一下招商银行的基本面"
+
+# 单次提问并写报告（自动做结构检查）
+bun run main.ts --ask "生成今日持仓日报" --out reports/daily_report_20261103.md
 
 # 多轮对话（REPL，输入 exit 退出）
 bun run main.ts --agent
@@ -58,17 +65,19 @@ graph TB
         S3["3 个 dev skill<br/>belos-street / bun / grill-me"]
     end
 
-    subgraph Data["⚙️ CLI 数据层 · src/"]
+    subgraph Data["⚙️ 数据层 · src/"]
         CLI["main.ts<br/>cli / data / agent / format"]
-        SDK["stock-sdk"]
+        STATS["stats.ts<br/>收益 / 回撤 / 波动 / corr / beta"]
+        SDK["行情 / 基金 / K线 / 股息"]
     end
 
     Market["东方财富 / 天天基金<br/>A股 · 港股 · 美股 · 基金"]
 
     M1 -->|"load_skill + 调 CLI"| Skill
-    M2 -->|"6 个 tools + load_skill"| Skill
+    M2 -->|"10 个 tools + load_skill"| Skill
     M1 --> Data
     M2 --> Data
+    CLI --> STATS
     CLI --> SDK
     SDK --> Market
 ```
@@ -76,7 +85,24 @@ graph TB
 **分层说明**：
 - **Agent 层**：决定「怎么用」——harness 直读 or LangChain.js 对话
 - **Skill 层**：投资方法论（口径纪律、空方论点、估值框架），渐进式加载不爆上下文
-- **CLI 数据层**：`main.ts` → `src/` → stock-sdk，两种模式共享，取实时行情/净值/股息/K线
+- **数据层**：`main.ts` → `src/` → 行情/基金/K线/股息，两种模式共享；计算层负责收益、回撤、波动与相关性
+
+## Agent 工具（10 个）
+
+| 工具 | 用途 |
+|---|---|
+| `get_stock_quote` | A股/港股/美股行情：PE/PB/52 周/换手/量比/市值 |
+| `get_fund_quote` | 基金单位净值、累计净值、净值日期 |
+| `get_dividend_yield` | 股息率（单期口径，随附 `yield_basis`） |
+| `get_kline` | K 线（前复权；日 250 / 周 104 / 月 120 根） |
+| `search_stock` | 名称 → 代码，兼做歧义澄清 |
+| `load_skill` | 加载投资方法论全文（路径白名单） |
+| `get_market_overview` | 5 个核心指数 + 两市成交额；缺失项显式声明 |
+| `get_portfolio_snapshot` | 持仓金额/占比/drift/上限；仅份额与成本齐全时算盈亏 |
+| `compute_series_stats` | 区间收益/回撤/波动/corr/beta/价格分位 |
+| `web_search` | 新闻/公告/政策（需 `SEARCH_API_KEY`，无 key 明确报错） |
+
+> 所有工具返回统一信封 `{ ok, data, meta }`，`meta` 带 `source / asOf / unit`；失败返回 `{ ok: false, error }`，不抛异常、不编造缺失字段。
 
 ## 投资理念
 
@@ -208,16 +234,17 @@ cp .env.example .env
 ```env
 OPENAI_API_KEY=sk-your-api-key
 OPENAI_BASE_URL=https://api.deepseek.com   # DeepSeek / MoonShot 等
-DEFAULT_MODEL=deepseek-chat                 # 模型名因供应商而异
+DEFAULT_MODEL=deepseek-flash                 # 模型名因供应商而异
 # OPENAI_APPEND_V1=false                    # Azure/网关需保留原 URL 时关闭补 /v1
 ```
 
 > 模式 1（harness）无需 `.env`，由 IDE Agent 自带 LLM。
 
-### 4. 冒烟测试
+### 4. 冒烟测试与自检
 
 ```bash
 bun run main.ts -s sh600519 --pretty   # 返回贵州茅台行情即环境就绪
+bun run check                          # 类型检查 + 单测 + golden + lint
 ```
 
 ### 5. 开始使用
@@ -248,6 +275,7 @@ bun run main.ts [options]
 | `-o, --format` | 输出格式：json / table / csv | `-o table` |
 | `--pretty` | 美化 JSON 输出 | `--pretty` |
 | `--ask <question>` | 向 AI 助手提单个问题（模式2） | `--ask "分析招商银行"` |
+| `--out <path>` | 把 `--ask` 的最终回答写入 Markdown 并做结构检查 | `--out reports/daily.md` |
 | `--agent` | 进入 AI 多轮对话（模式2） | `--agent` |
 
 > stdout 只输出数据，标题/提示走 stderr，可直接管道给 JSON 解析工具。
@@ -312,43 +340,26 @@ stock-analytics-agent/
 ├── main.ts                  # 薄入口：解析参数 → 分发
 ├── src/
 │   ├── cli/                 # program/query/render（CLI 编排、渲染、spinner）
-│   ├── data/                # sdk/dividend（数据获取层）
-│   ├── agent/               # config/index/run/skills/tools/position/trace
+│   ├── data/                # sdk/dividend/stats（行情、净值、股息、K线、统计）
+│   ├── agent/               # config/index/run/skills/tools/position/trace/envelope/compliance
 │   ├── format.ts            # 输出格式化
 │   ├── types.ts             # 集中类型定义
 │   └── index.ts             # 统一导出
-├── test/                    # bun test 用例
+├── test/                    # bun test 用例 + golden fixture
 ├── .agents/
 │   ├── skills/              # 25 个投资 skill
 │   ├── business/            # html-report / report-review / skill-quality-review
 │   ├── dev/                 # belos-street / bun / grill-me
-│   ├── rules/               # project_rules / memory
+│   ├── rules/               # project_rules / memory / agent_brief
 │   └── memory/decisions.md  # 决策日志
-├── upgrade/v3.0/            # 3.0 升级归档（计划 todo + skills review 报告）
+├── upgrade/v3.0/            # 3.0 升级归档
+├── upgrade/v3.1/            # 3.1 方案、评审与基线说明
 ├── AGENTS.md                # Agent 配置（skill 路由、场景映射）
 ├── position.example.md      # 持仓配置模板
 ├── .env.example             # LLM 配置模板（模式2）
 ├── package.json
 └── README.md
 ```
-
-## 技术栈
-
-- **运行时**：Bun
-- **CLI 框架**：Commander
-- **Agent 框架**：LangChain.js 1.0+（模式2）
-- **数据 SDK**：[stock-sdk](https://github.com/chengzuopeng/stock-sdk)
-- **CLI 美化**：ora（loading）+ marked / marked-terminal（彩色 Markdown）
-- **工具链**：oxlint + oxcfmt + bun test + 类型检查
-- **数据源**：东方财富 / 天天基金
-
-## 致谢
-
-| 项目 | 说明 | 链接 |
-|------|------|------|
-| **stock-sdk** | 零依赖股票数据 SDK，84 个命名空间方法 | [GitHub](https://github.com/chengzuopeng/stock-sdk) |
-| **LangChain.js** | Agent 框架 | [docs.langchain.com](https://docs.langchain.com) |
-| **天天基金 / 东方财富** | 数据源 | [eastmoney.com](https://www.eastmoney.com/) |
 
 ## 扩展开发
 
