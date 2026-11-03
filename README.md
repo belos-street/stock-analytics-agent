@@ -361,6 +361,13 @@ stock-analytics-agent/
 └── README.md
 ```
 
+## 致谢
+
+| 项目 | 说明 | 链接 |
+|------|------|------|
+| **stock-sdk** | 零依赖股票数据 SDK，84 个命名空间方法 | [GitHub](https://github.com/chengzuopeng/stock-sdk) |
+| **天天基金 / 东方财富** | 数据源 | [eastmoney.com](https://www.eastmoney.com/) |
+
 ## 扩展开发
 
 **添加新 skill**：
