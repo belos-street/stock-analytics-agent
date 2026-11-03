@@ -11,7 +11,7 @@
  */
 
 import { readdirSync, readFileSync, existsSync } from 'fs'
-import { dirname, join } from 'path'
+import { dirname, join, resolve, sep } from 'path'
 import { fileURLToPath } from 'url'
 
 /** 单个 skill 的元信息 */
@@ -82,17 +82,23 @@ export function listSkills(): SkillInfo[] {
   return skillCatalog
 }
 
+/** skill 名称白名单：只允许字母 / 数字 / 下划线 / 短横线，阻止 ../ 路径穿越（D21） */
+export function isSafeSkillName(name: string): boolean {
+  return /^[A-Za-z0-9_-]+$/.test(name.trim())
+}
+
 /**
  * 加载单个 skill 的完整正文。
  * @param name skill 名称（目录名或 frontmatter 中的 name）
- * @returns skill 正文，未找到时返回 null
+ * @returns skill 正文，未找到或越界时返回 null
  */
 export function loadSkill(name: string): SkillContent | null {
   const target = name.trim()
+  if (!isSafeSkillName(target)) return null
 
-  // 目录名直接命中
+  // 目录名直接命中；resolve 后再次校验前缀，双保险
   const byDir = join(SKILLS_DIR, target, 'SKILL.md')
-  if (existsSync(byDir)) {
+  if (resolve(byDir).startsWith(SKILLS_DIR + sep) && existsSync(byDir)) {
     return parseSkillFile(readFileSync(byDir, 'utf-8'), target)
   }
 

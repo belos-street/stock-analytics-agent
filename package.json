@@ -1,6 +1,6 @@
 {
   "name": "stock-analytics-agent",
-  "version": "3.0.1",
+  "version": "3.1.1",
   "bin": {
     "stock-analytics": "./main.ts"
   },
@@ -11,13 +11,15 @@
     "quote": "bun run main.ts -s",
     "fund": "bun run main.ts -f",
     "dividend": "bun run main.ts --dividend",
-    "test": "bun test",
+    "test": "bun test --timeout 15000",
+    "test:golden": "RUN_GOLDEN=1 bun test test/stats.golden.test.ts",
     "test:sdk": "bun run test/test-stock-sdk.ts",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "typecheck": "tsc --noEmit",
+    "check": "bun run typecheck && bun run test && bun run test:golden && bun run lint",
     "check-report": "bun run .agents/business/report-review/scripts/check-report.ts"
   },
   "dependencies": {

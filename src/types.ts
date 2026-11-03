@@ -8,21 +8,38 @@
 
 // ── 原始行情（stock-sdk CLI 返回） ─────────────────────────────
 
-/** A股/港股/美股原始行情 */
-export interface RawStockQuote {
-  marketId?: string
-  name: string
+/** 统一股票/ETF行情（CN/HK/US 归一；数据源缺失字段一律 null，不补零） */
+export interface StockQuote {
   code: string
+  name: string
+  market: 'CN' | 'HK' | 'US'
+  currency: 'CNY' | 'HKD' | 'USD'
   price: number
   change: number
   changePercent: number
-  volume?: number
-  amount?: number
-  marketCap?: number
-  marketType?: string
-  market?: string
-  assetType?: string
-  source?: string
+  prevClose: number | null
+  open: number | null
+  high: number | null
+  low: number | null
+  volume: number | null
+  /** CN 单位为万元；HK/US 为原币 */
+  amount: number | null
+  pe: number | null
+  pb: number | null
+  peStatic: number | null
+  peDynamic: number | null
+  turnoverRate: number | null
+  volumeRatio: number | null
+  amplitude: number | null
+  high52w: number | null
+  low52w: number | null
+  /** CN 单位为亿元；HK/US 为原币亿 */
+  totalMarketCap: number | null
+  circulatingMarketCap: number | null
+  time: string | null
+  timestamp: number | null
+  tz: string | null
+  source: string
 }
 
 /** 基金原始净值行情（字段与股票不同：nav 代替 price，change 即涨跌幅） */
@@ -30,12 +47,12 @@ export interface RawFundQuote {
   code: string
   name: string
   nav: number
-  accNav?: number
+  accNav?: number | null
   /** 基金行情的涨跌幅存放在 change 字段（无 changePercent） */
   change: number
-  navDate?: string
-  timestamp?: number
-  tz?: string
+  navDate?: string | null
+  timestamp?: number | null
+  tz?: string | null
   market?: string
   assetType?: string
   source?: string

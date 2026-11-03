@@ -19,6 +19,9 @@ Thumbs.db
 # 个人文件
 watchlist/
 
+# 本地评测记录（含个人持仓数据，勿入库）
+eval/
+
 node_modules/
 
 # 环境变量（含密钥，勿提交）
