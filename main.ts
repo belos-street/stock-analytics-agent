@@ -18,12 +18,17 @@ import { runQuery, printUsage } from './src/cli/query'
 async function main() {
   const options = buildProgram()
 
+  if (options.out && !options.ask) {
+    console.error('--out 仅与 --ask 搭配使用')
+    process.exit(1)
+  }
+
   // AI agent 模式
   if (options.agent || options.ask) {
     try {
       const { askOnce, chatLoop } = await import('./src/agent/run')
       if (options.ask) {
-        console.log(await askOnce(options.ask))
+        console.log(await askOnce(options.ask, options.out))
       } else {
         await chatLoop()
       }

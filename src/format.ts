@@ -9,7 +9,7 @@ import type {
   FormattedFund,
   FormattedStock,
   RawFundQuote,
-  RawStockQuote
+  StockQuote
 } from './types'
 
 export type {
@@ -29,7 +29,7 @@ function formatUpdateTime(timestamp?: number): string {
 /**
  * 格式化股票行情数据
  */
-export function formatStockQuote(quote: RawStockQuote): FormattedStock {
+export function formatStockQuote(quote: StockQuote): FormattedStock {
   return {
     type: 'stock',
     code: quote.code,
@@ -37,11 +37,12 @@ export function formatStockQuote(quote: RawStockQuote): FormattedStock {
     current_price: quote.price,
     change: quote.change,
     change_percent: quote.changePercent,
-    volume: quote.volume,
-    amount: quote.amount,
-    market_cap: quote.marketCap,
-    // 股票行情无 timestamp 字段（SDK 未返回），更新时间取当前
-    update_time: formatUpdateTime()
+    volume: quote.volume ?? undefined,
+    amount: quote.amount ?? undefined,
+    // CLI 字段集合保持不变：original CLI 仅 A 股带市值，港美股不新增该字段
+    market_cap:
+      quote.market === 'CN' ? (quote.totalMarketCap ?? undefined) : undefined,
+    update_time: formatUpdateTime(quote.timestamp ?? undefined)
   }
 }
 
@@ -56,7 +57,7 @@ export function formatFundQuote(quote: RawFundQuote): FormattedFund {
     current_price: quote.nav,
     // 基金行情接口没有 changePercent 字段，涨跌幅存放在 change 字段
     change_percent: quote.change,
-    update_time: formatUpdateTime(quote.timestamp)
+    update_time: formatUpdateTime(quote.timestamp ?? undefined)
   }
 }
 
@@ -127,7 +128,7 @@ export function outputData<T extends object>(
  * 格式化并输出股票数据
  */
 export function formatAndOutputStocks(
-  quotes: RawStockQuote[],
+  quotes: StockQuote[],
   format: 'json' | 'table' | 'csv' = 'json',
   pretty: boolean = false
 ) {

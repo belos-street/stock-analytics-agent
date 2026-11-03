@@ -2,8 +2,8 @@ import { getQuotes, getSDK } from './sdk'
 import type {
   DividendYieldResult,
   EastMoneyDividendRecord,
-  RawStockQuote,
-  SdkDividendRecord
+  SdkDividendRecord,
+  StockQuote
 } from '../types'
 
 export type { DividendYieldResult }
@@ -19,7 +19,7 @@ export const YIELD_BASIS =
  */
 async function getDividendYieldFromEastMoney(
   symbol: string,
-  quote?: RawStockQuote
+  quote?: StockQuote
 ): Promise<DividendYieldResult | null> {
   try {
     // 提取纯数字代码（去掉sh/sz前缀）
@@ -124,7 +124,7 @@ async function getDividendYieldFromEastMoney(
  */
 async function getDividendYieldFromSDK(
   symbol: string,
-  quote?: RawStockQuote
+  quote?: StockQuote
 ): Promise<DividendYieldResult | null> {
   const sdk = getSDK()
 
@@ -196,7 +196,7 @@ async function getDividendYieldFromSDK(
  */
 export async function getDividendYield(
   symbol: string,
-  quote?: RawStockQuote
+  quote?: StockQuote
 ): Promise<DividendYieldResult | null> {
   // 优先使用东方财富API
   const eastMoneyResult = await getDividendYieldFromEastMoney(symbol, quote)
@@ -216,7 +216,7 @@ export async function getDividendYield(
 export async function getDividendYields(
   symbols: string[]
 ): Promise<DividendYieldResult[]> {
-  let quotes: RawStockQuote[] = []
+  let quotes: StockQuote[] = []
   try {
     quotes = await getQuotes(symbols)
   } catch (error) {
